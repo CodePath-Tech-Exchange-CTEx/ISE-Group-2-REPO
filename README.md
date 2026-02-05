@@ -2,7 +2,7 @@
 
 ## Our Team
 
-TODO: Replace with your team members
+Oluwanifemi Elias,
 
 # Setup
 
