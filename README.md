@@ -2,7 +2,8 @@
 
 ## Our Team
 
-TODO: Caleb Ligon 
+
+TODO: Oluwanifemi Elias, Caleb Ligon
 
 # Setup
 
