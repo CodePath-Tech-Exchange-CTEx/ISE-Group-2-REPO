@@ -3,7 +3,7 @@
 ## Our Team
 
 
-TODO: Oluwanifemi Elias, Caleb Ligon
+TODO: Oluwanifemi Elias, Caleb Ligon, Brian Rivera
 
 # Setup
 
