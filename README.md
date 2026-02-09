@@ -2,8 +2,11 @@
 
 ## Our Team
 
+Oluwanifemi Elias, Caleb Ligon, Brian Rivera, Natalia Camejo Del Valle, Kenneth Ye
 
-TODO: Oluwanifemi Elias, Caleb Ligon, Brian Rivera, Natalia Camejo Del Valle
+# Project Meeting Notes
+
+https://docs.google.com/document/d/1TYA1KOcid8oyJZhJXN6B-sG-6WRGBM9MNr43UNyI55k/edit?tab=t.0#heading=h.1yah3l3dymsd
 
 # Setup
 
