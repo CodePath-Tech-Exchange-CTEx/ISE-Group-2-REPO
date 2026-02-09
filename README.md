@@ -3,7 +3,6 @@
 ## Our Team
 
 TODO: Replace with your team members
-Natalia Camejo Del Valle
 
 # Setup
 
