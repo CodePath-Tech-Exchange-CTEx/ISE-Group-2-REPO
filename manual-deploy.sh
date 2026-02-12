@@ -1,6 +1,6 @@
 ### VARIABLES TO CHANGE - START
-PROJECT_ID=
-SERVICE_NAME=
+PROJECT_ID=oluwanifemi-elias-hu
+SERVICE_NAME=algorithm-alliance-app
 ### VARIABLES TO CHANGE - END
 
 # ----------- Manual Deployment ------------ #
