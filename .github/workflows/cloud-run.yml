@@ -4,13 +4,12 @@ name: Cloud Run Continuous Deployment
 
 on:
   push:
-    # TODO: change 'none' to 'main' to enable the workflow to run
-    branches: 'none'
+    branches: 'main'
   release:
     types: [published]
 
 env:
-  # TODO: Paste output from setup.sh below.
+  # Paste output from setup.sh below.
   PROJECT_ID: 'oluwanifemi-elias-hu'
   SERVICE_NAME: 'algorithm-alliance-app'
   SERVICE_REGION: 'us-central1'
