@@ -1,8 +1,12 @@
-# TODO: Replace with your team name
+# TODO: The Algorithm Alliance
 
 ## Our Team
 
-TODO: Replace with your team members
+Oluwanifemi Elias, Caleb Ligon, Brian Rivera, Natalia Camejo Del Valle, Kenneth Ye
+
+# Project Meeting Notes
+
+https://docs.google.com/document/d/1TYA1KOcid8oyJZhJXN6B-sG-6WRGBM9MNr43UNyI55k/edit?tab=t.0#heading=h.1yah3l3dymsd
 
 # Setup
 
@@ -81,3 +85,4 @@ After you are assigned a task in the project, how do you actually make the chang
 7. Check that your changes work in a container by running `./run-streamlit.sh` and make sure you see your changes.
 8. Use git to add, commit, and push your changes. It might be good to run `git pull --rebase` before pushing your changes, or optionally use git branches to avoid conflicts with your teammates.
 9. In GitHub, once you push to the main branch, check that the Actions succeeded and deployed your changes.
+Algorithm Alliance
