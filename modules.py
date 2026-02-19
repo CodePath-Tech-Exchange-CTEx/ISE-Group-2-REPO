@@ -29,5 +29,24 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
+def display_post(username, user_image, timestamp, content, post_image):
+    """Write a good docstring here."""
+    pass
+
+
+def display_activity_summary(workouts_list):
+    """Write a good docstring here."""
+    pass
+
+
+def display_recent_workouts(workouts_list):
+    """Write a good docstring here."""
+    pass
+
+
+def display_genai_advice(timestamp, content, image):
+    """Write a good docstring here."""
+    pass
+
 def home_module():
     pass
