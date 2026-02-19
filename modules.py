@@ -8,6 +8,7 @@
 #############################################################################
 
 from internals import create_component
+import streamlit as st
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -29,24 +30,31 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
-def display_post(username, user_image, timestamp, content, post_image):
-    """Write a good docstring here."""
-    pass
+def NavBar():
+    st.markdown("""
+        <style>
+            .bottom-nav {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background: white;
+                border-top: 1px solid #ccc;
+                padding: 12px;
+                text-align: center;
+                z-index: 9999;
+            }
+            .bottom-nav span {
+                color: black
+            }
+        </style>
 
+        <div class="bottom-nav">
+            <span>Navbar</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-def display_activity_summary(workouts_list):
-    """Write a good docstring here."""
-    pass
-
-
-def display_recent_workouts(workouts_list):
-    """Write a good docstring here."""
-    pass
-
-
-def display_genai_advice(timestamp, content, image):
-    """Write a good docstring here."""
-    pass
-
-def home_module():
-    pass
+def UserProfile(container):
+    with container:
+        st.subheader("User Profile")
+        st.write("Example of how to write into the main container from a module")
