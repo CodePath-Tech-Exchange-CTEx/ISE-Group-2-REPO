@@ -39,5 +39,8 @@ if __name__ == '__main__':
     # Write "user profile" into the container by passing the container into the function parameter
     UserProfile(app_container)
 
+    # NEW: Render the chatbot prototype
+    GeminiChatbot(app_container)
+
     # Render nav bar outside main container
     NavBar()

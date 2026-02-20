@@ -58,3 +58,30 @@ def UserProfile(container):
     with container:
         st.subheader("User Profile")
         st.write("Example of how to write into the main container from a module")
+
+# Add this to modules.py
+
+def GeminiChatbot(container):
+   with container:
+        # Use an expander to act as a "pop-up" drawer
+        with st.expander("💬 Ask AI Assistant", expanded=False):
+            st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
+            
+            # Chat history logic stays the same
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if prompt := st.chat_input("Ask a question..."):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})
+
+                # Mock response
+                response = "I'll be ready to analyze your resume once the API is linked!"
+                with st.chat_message("assistant"):
+                    st.write(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
