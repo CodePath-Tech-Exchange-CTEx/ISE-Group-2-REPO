@@ -145,3 +145,37 @@ def get_genai_advice(user_id):
         'content': advice,
         'image': image,
     }
+
+Mock_Jobs = [
+    {"id": "google-1",
+        "company": "Google",
+        "title": "Software Engineer Intern Summer 2026",
+        "description": "Work on scalable systems.",
+        "skills": ["Python", "Data Structures", "Git", "AWS"],
+        "experience": "Projects / coursework accepted",
+        "location" : "Florida"
+    },
+    {
+        "id": "meta-1",
+        "company": "Meta",
+        "title": "Backend Intern 2026",
+        "description": "Build APIs and services.",
+        "skills": ["Java", "APIs", "Databases"],
+        "experience": "Some backend project experience",
+        "location" : "White House"
+    },
+    {
+        "id": "apple-1",
+        "company": "Apple",
+        "title": "iOS Intern 2026",
+        "description": "Help develop iOS features.",
+        "skills": ["Swift", "Postgres", "Flask"],
+        "experience": "Mobile apps or class projects",
+        "location" : "New York"
+    }
+    ]
+
+def get_jobs():
+    return Mock_Jobs
+
+
