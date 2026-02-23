@@ -30,7 +30,7 @@ UserProfile(container)
         # We check if the subheader "User Profile" exists in the rendered output.
         # This confirms our function actually 'wrote' to the container.
         self.assertTrue(len(at.subheader) > 0)
-        self.assertEqual(at.subheader[0].value, "User Profile")
+        self.assertEqual(at.subheader[0].value, "Profile")
 
    
 

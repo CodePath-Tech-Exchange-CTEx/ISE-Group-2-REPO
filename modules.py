@@ -56,15 +56,38 @@ def NavBar():
 
 def UserProfile(container):
     with container:
-        st.subheader("User Profile")
-        st.write("Example of how to write into the main container from a module")
+        st.subheader("Profile")
 
 # Add this to modules.py
 
 def GeminiChatbot(container):
+   st.markdown(
+        """
+        <style>
+        /* This targets the expander container */
+        div[data-testid="stExpander"] {
+            border: 2px solid black !important;
+            border-radius: 30px; /* Optional: rounds the corners slightly */
+        }
+        
+        /* Change the 'Ask AI Assistant' text color to black */
+        div[data-testid="stExpander"] p {
+            color: black !important;
+            font-weight: bold;
+        }
+
+        /* Makes the chat input box also have a black outline */
+        .stChatInput {
+            border: 1px solid black !important;
+            border-radius: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
    with container:
         # Use an expander to act as a "pop-up" drawer
-        with st.expander("💬 Ask AI Assistant", expanded=False):
+        with st.expander("🔎 Ask AI Assistant", expanded=False):
             st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
             
             # Chat history logic stays the same
