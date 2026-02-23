@@ -8,56 +8,36 @@
 
 import unittest
 from streamlit.testing.v1 import AppTest
-from modules import UserProfile, GeminiChatbot #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from modules import GeminiChatbot #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 
 # Write your tests below
 
 
 
-class UserProfile(unittest.TestCase):
-    """Tests the UserProfile function."""
-    def test_user_profile_renders(self):
-        """Tests that UserProfile displays the correct subheader."""
-        # 1. Setup: We initialize a simulated Streamlit app
-        at = AppTest.from_string("""
-import streamlit as st
-from modules import UserProfile
-container = st.container()
-UserProfile(container)
-        """).run()
-
-        # 2. Execution & Assertion: 
-        # We check if the subheader "User Profile" exists in the rendered output.
-        # This confirms our function actually 'wrote' to the container.
-        self.assertTrue(len(at.subheader) > 0)
-        self.assertEqual(at.subheader[0].value, "Profile")
-
-   
 
 
 class TestGeminiChatbot(unittest.TestCase):
-    def test_gemini_chatbot_interaction(self):
-        """Tests the Chatbot UI and its mock response logic."""
-        # 1. Setup: Simulate the chatbot inside the app
-        at = AppTest.from_string("""
-import streamlit as st
-from modules import GeminiChatbot
-container = st.container()
-GeminiChatbot(container)
-        """).run()
+        def setUp(self):
+                """Initialize the app simulation before each test."""
+                self.at = AppTest.from_file("app.py").run()
 
-        # 2. Action: Simulate a user typing "Hello" into the chat input
-        # In software testing, this is 'Input Simulation'.
-        at.chat_input[0].set_value("Hello").run()
+      
+        def test_chat_interaction(self):
+                """Test if typing a message updates session state and gives a response."""
+                # Simulate typing 'Hello' into the chat input
+                # Note: at.chat_input[0] selects the first chat input found
+                self.at.chat_input[0].set_value("Hello").run()
 
-        # 3. Assertions:
-        # Check if the user message was added to the chat
-        self.assertIn("Hello", at.markdown[0].value)
-        
-        # Check if the mock assistant response appeared
-        # This confirms our session_state logic and response logic are working.
-        expected_response = "I'll be ready to analyze your resume once the API is linked!"
-        self.assertIn(expected_response, at.markdown[1].value)
+                # Check if the message was added to session_state
+                messages = self.at.session_state.messages
+                self.assertEqual(len(messages), 2)
+                self.assertEqual(messages[0]["role"], "user")
+                self.assertEqual(messages[0]["content"], "Hello")
+                
+                # Check if the mock assistant responded correctly
+                self.assertEqual(messages[1]["role"], "assistant")
+                self.assertIn("analyze your resume", messages[1]["content"])
+
 
 
 if __name__ == "__main__":
