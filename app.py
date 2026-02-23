@@ -18,6 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
+#style font color of the app to be black and background color to white
 st.markdown(
     """
     <style>

@@ -31,6 +31,285 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def NavBar():
     st.markdown("""
         <style>
@@ -57,41 +336,22 @@ def NavBar():
 
 
 
-def Render_Job_Swiping(container, jobs):
-    html = """
-    <style>
-    /* Horizontal swipe container */
-    .carousel {
-        display : flex;    /* cards side by side */
-        overflow-x : auto;    /* allow horizontal scroll */
-        scroll-snap-type : x mandatory;    /* snap page by page */
-        -webkit-overflow-scrolling: touch;    /* smooth iOS scrolling */
-        gap: 16px;
-        padding: 12px 2px;
-        width: 100%;
-        touch-action: pan-x;
-    }
-    /*Remove scroll bar*/
-    .carousel::-webkit-scrollbar { display: none; }
-
-    /* Job page*/
-    .card {
-        flex: 0 0 100%;    /*Manages the space of the card in the screen*/
-        scroll-snap-align: start;    /*When snapping, allign card with screen*/
-        border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        padding: 22px;
-        background: #ffffff;
-        min-height: 75vh;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-        box-sizing: border-box;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+def GeminiChatbot(container):
+   st.markdown(
+        """
+        <style>
+        
+        div[data-testid="stExpander"] {
+            border: 2px solid black !important;
+            border-radius: 30px; 
         }
-    .header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 10px;
+        
+
+
+
+        div[data-testid="stExpander"] p {
+            color: black !important;
+            font-weight: bold;
         }
     /* simple logo circle */
       .logo {
@@ -128,109 +388,39 @@ def Render_Job_Swiping(container, jobs):
     font-size: 16px;
     }
 
-    /* badges */
-    .badges { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 14px 0; }
-    .badge-open {
-    background: #d1fae5;
-    color: #065f46;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    }
-    .badge-salary {
-    background: #fee2e2;
-    color: #991b1b;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    }
-    /* skills row */
-    .skills-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 10px 0 18px 0;
-    }
-    .chip { 
-    display: inline-block; 
-    padding: 8px 10px; 
-    border-radius: 10px; 
-    border: 1px solid #e5e7eb; 
-    background: #f9fafb; 
-    font-size: 14px;
-    font-weight: 650;
-    color: #111827; 
-    }
-    /* bottom location badge */
-    .location {
-    background: #dcfce7;
-    color: #166534;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-weight: 800;
-    font-size: 14px;
-    margin-top: 10px;
-    }
+        /* Makes the chat input box also have a black outline */
+        .stChatInput {
+            border: 1px solid black !important;
+            border-radius: 30px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+   with container:
 
-    .section {
-    margin-top: 14px;
-    color: #111827;
-    }
-    .section b { color: #111827; }
-    .section p { margin: 6px 0; color: #374151; }
-    </style>
-    <div class="carousel">
-    """
+        st.markdown('<div id="chatbot-section-wrapper"> <div id ="chatbot-expander">', unsafe_allow_html=True)
+        # Use an expander to act as a "pop-up" drawer
+        with st.expander("🔎 Ask AI Assistant", expanded=False):
+            st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
+            
+            # Chat history logic stays the same
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
 
-    # HTML Container
-    for job in jobs:
-        company = job.get("company", "")
-        title = job.get("title", "")
-        description = job.get("description", "")
-        experience = job.get("experience", "")
-        location = job.get("location", "")
-        skills_html = render_skills(job.get("skills", []))
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
 
+            if prompt := st.chat_input("Ask a question..."):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})
 
-        html += f"""
-        <section class="card">
-          <div class="header">
-            <div>
-              <h2 class="title">{title}</h2>
-              <div class="company">{company}</div>
-            </div>
-          </div>
+                # Mock response
+                response = "I'll be ready to analyze your resume once the API is linked!"
+                with st.chat_message("assistant"):
+                    st.write(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
 
-          <div class="badges">
-            <div class="badge-open">✅ Open for applications</div>
-          </div>
-
-          <div class="skills-row">
-            {skills_html}
-          </div>
-
-          <div class="section">
-            <p><b>Job Description:</b> {description}</p>
-            <p><b>Experience:</b> {experience}</p>
-          </div>
-
-          <div class="location">📍 {location}</div>
-        </section>
-        """
-
-    html += "</div>"
-
-    with container:
-        st.subheader("User Profile")
-        st.write("Example of how to write into the main container from a module")
+        st.markdown('</div></div>', unsafe_allow_html=True)
