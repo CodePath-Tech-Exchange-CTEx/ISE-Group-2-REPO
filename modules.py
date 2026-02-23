@@ -72,46 +72,11 @@ def GeminiChatbot(container):
         }
         
 
-
-
         div[data-testid="stExpander"] p {
             color: black !important;
             font-weight: bold;
         }
-    /* simple logo circle */
-      .logo {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: #f3f4f6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        color: #111827;
-        font-size: 18px;
-        flex: 0 0 auto;
-      }
-    .company { 
-    font-size: 28px; 
-    font-weight: 700; 
-    margin: 0; 
-    }
-    .title { 
-    color: #555; 
-    margin-top: 4px; 
-    margin-bottom: 16px; 
-    }
-    .label { 
-    font-weight: 700; 
-    margin-top: 18px; 
-    margin-bottom: 6px; 
-    }
-    .subtext {
-    margin: 10px 0 14px 0;
-    color: #6b7280;
-    font-size: 16px;
-    }
+   
 
         /* Makes the chat input box also have a black outline */
         .stChatInput {
