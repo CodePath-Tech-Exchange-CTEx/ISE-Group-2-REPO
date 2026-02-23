@@ -7,11 +7,10 @@
 
 import streamlit as st
 from modules import *
-from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts
+from data_fetcher import get_user_posts, get_genai_advice, get_user_profile, get_user_sensor_data, get_user_workouts, get_jobs
 
 userId = 'user1'
 
-import streamlit as st
 
 # Page config
 st.set_page_config(
@@ -36,6 +35,7 @@ def main_container():
     # Create the master container
     container = st.container()
 
+<<<<<<< HEAD
     # Put any initial content inside it
     with container:
     
@@ -44,6 +44,8 @@ def main_container():
             unsafe_allow_html=True
         )
         
+=======
+>>>>>>> 37a9588 (module 3 implementation)
     return container
 
 
@@ -51,11 +53,15 @@ def main_container():
 if __name__ == '__main__':
     app_container = main_container()
 
-    # Write "user profile" into the container by passing the container into the function parameter
-    UserProfile(app_container)
+
+    jobs = get_jobs()
+    Render_Job_Swiping(app_container, jobs)
 
     # NEW: Render the chatbot prototype
     GeminiChatbot(app_container)
 
     # Render nav bar outside main container
     NavBar()
+
+    
+

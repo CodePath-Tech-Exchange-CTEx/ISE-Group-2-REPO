@@ -9,6 +9,7 @@
 
 from internals import create_component
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -333,11 +334,7 @@ def NavBar():
         </div>
     """, unsafe_allow_html=True)
 
-def UserProfile(container):
-    with container:
-        st.subheader("Profile")
 
-# Add this to modules.py
 
 def GeminiChatbot(container):
    st.markdown(
@@ -356,6 +353,40 @@ def GeminiChatbot(container):
             color: black !important;
             font-weight: bold;
         }
+    /* simple logo circle */
+      .logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #111827;
+        font-size: 18px;
+        flex: 0 0 auto;
+      }
+    .company { 
+    font-size: 28px; 
+    font-weight: 700; 
+    margin: 0; 
+    }
+    .title { 
+    color: #555; 
+    margin-top: 4px; 
+    margin-bottom: 16px; 
+    }
+    .label { 
+    font-weight: 700; 
+    margin-top: 18px; 
+    margin-bottom: 6px; 
+    }
+    .subtext {
+    margin: 10px 0 14px 0;
+    color: #6b7280;
+    font-size: 16px;
+    }
 
         /* Makes the chat input box also have a black outline */
         .stChatInput {
