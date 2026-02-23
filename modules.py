@@ -56,5 +56,55 @@ def NavBar():
 
 def UserProfile(container):
     with container:
-        st.subheader("User Profile")
-        st.write("Example of how to write into the main container from a module")
+        st.subheader("Profile")
+
+# Add this to modules.py
+
+def GeminiChatbot(container):
+   st.markdown(
+        """
+        <style>
+        /* This targets the expander container */
+        div[data-testid="stExpander"] {
+            border: 2px solid black !important;
+            border-radius: 30px; /* Optional: rounds the corners slightly */
+        }
+        
+        /* Change the 'Ask AI Assistant' text color to black */
+        div[data-testid="stExpander"] p {
+            color: black !important;
+            font-weight: bold;
+        }
+
+        /* Makes the chat input box also have a black outline */
+        .stChatInput {
+            border: 1px solid black !important;
+            border-radius: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+   with container:
+        # Use an expander to act as a "pop-up" drawer
+        with st.expander("🔎 Ask AI Assistant", expanded=False):
+            st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
+            
+            # Chat history logic stays the same
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if prompt := st.chat_input("Ask a question..."):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})
+
+                # Mock response
+                response = "I'll be ready to analyze your resume once the API is linked!"
+                with st.chat_message("assistant"):
+                    st.write(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
