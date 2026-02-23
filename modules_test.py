@@ -8,36 +8,22 @@
 
 import unittest
 from streamlit.testing.v1 import AppTest
-from modules import display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from modules import UserProfile, GeminiChatbot #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 
 # Write your tests below
 
-class TestDisplayPost(unittest.TestCase):
-    """Tests the display_post function."""
+
+
+class UserProfile(unittest.TestCase):
+    """Tests the UserProfile function."""
 
     def test_foo(self):
         """Tests foo."""
         pass
 
 
-class TestDisplayActivitySummary(unittest.TestCase):
-    """Tests the display_activity_summary function."""
-
-    def test_foo(self):
-        """Tests foo."""
-        pass
-
-
-class TestDisplayGenAiAdvice(unittest.TestCase):
-    """Tests the display_genai_advice function."""
-
-    def test_foo(self):
-        """Tests foo."""
-        pass
-
-
-class TestDisplayRecentWorkouts(unittest.TestCase):
-    """Tests the display_recent_workouts function."""
+class TestGeminiChatbot(unittest.TestCase):
+    """Tests the GeminiChatbot function."""
 
     def test_foo(self):
         """Tests foo."""
