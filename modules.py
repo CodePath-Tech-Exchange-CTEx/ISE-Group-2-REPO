@@ -64,13 +64,13 @@ def GeminiChatbot(container):
    st.markdown(
         """
         <style>
-        /* This targets the expander container */
+        
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
-            border-radius: 30px; /* Optional: rounds the corners slightly */
+            border-radius: 30px; 
         }
         
-        /* Change the 'Ask AI Assistant' text color to black */
+        
         div[data-testid="stExpander"] p {
             color: black !important;
             font-weight: bold;
@@ -79,13 +79,15 @@ def GeminiChatbot(container):
         /* Makes the chat input box also have a black outline */
         .stChatInput {
             border: 1px solid black !important;
-            border-radius: 10px;
+            border-radius: 30px;
         }
         </style>
         """,
         unsafe_allow_html=True
     )
    with container:
+
+        st.markdown('<div id="chatbot-section-wrapper"> <div id ="chatbot-expander">', unsafe_allow_html=True)
         # Use an expander to act as a "pop-up" drawer
         with st.expander("🔎 Ask AI Assistant", expanded=False):
             st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
@@ -108,3 +110,5 @@ def GeminiChatbot(container):
                 with st.chat_message("assistant"):
                     st.write(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+
+        st.markdown('</div></div>', unsafe_allow_html=True)
