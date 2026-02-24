@@ -114,3 +114,50 @@ def GeminiChatbot(container):
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
         st.markdown('</div></div>', unsafe_allow_html=True)
+
+#MODULE 4 User Button + Search Bar:
+def CompanySearch(container):
+    
+    # Keeping the border style for the search bar
+    st.markdown("""
+        <style>
+            .stTextInput > div > div {
+                border: 2px solid black !important;
+                border-radius: 30px !important;
+            }
+            /* Styling the user button to be circular */
+            .user-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 45px;
+                width: 45px;
+                border: 2px solid black;
+                border-radius: 50%;
+                font-size: 20px;
+                cursor: pointer;
+                background-color: white;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with container:
+        # Create two columns: 1 for the icon, 1 for the search 
+        col_icon, col_search = st.columns([1, 10])
+        
+        with col_icon:
+            # We use markdown for the circular button look
+            st.markdown('<div class="user-btn">👤</div>', unsafe_allow_html=True)
+            
+        with col_search:
+            # Your search bar stays here
+            company_name = st.text_input(
+                "Search", 
+                placeholder="🔎 | Search company...", 
+                label_visibility="collapsed",
+                key="search_with_user_icon"
+            )
+
+        # This part makes "Enter" feel real:
+        if company_name:
+            st.info(f"Searching for:  {company_name}")
