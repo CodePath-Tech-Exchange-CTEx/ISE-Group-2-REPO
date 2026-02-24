@@ -7,7 +7,7 @@
 
 import streamlit as st
 
-from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage
 from data_fetcher import get_jobs
 
 
@@ -19,6 +19,13 @@ st.set_page_config(
     page_title="InternMatch",
     layout="wide"
 )
+
+
+########## code change ##########
+# Initialize navigation state
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+#################################
 
 #style font color of the app to be black and background color to white
 st.markdown(
@@ -59,16 +66,32 @@ if __name__ == '__main__':
     #Render_Job_Swiping(app_container, jobs)
 
     #MODULE4 
-    CompanySearch(app_container)
+    #CompanySearch(app_container)
 
 
     # NEW: Render the chatbot prototype
-    GeminiChatbot(app_container)
+    #GeminiChatbot(app_container)
 
-    jobs = get_jobs()
-    Render_Job(app_container, jobs)
+    #jobs = get_jobs()
+    #Render_Job(app_container, jobs)
 
    
+    ########## code change ##########
+    # Logic to switch between Home and Profile
+    if st.session_state.page == "home":
+        # Render Home Page
+        CompanySearch(app_container)
+        
+        GeminiChatbot(app_container)
+        
+        jobs = get_jobs()
+        
+        Render_Job(app_container, jobs)
+    
+    elif st.session_state.page == "profile":
+        # Render Profile Page
+        ProfilePage(app_container)
+    #################################
 
     # Render nav bar outside main container
     NavBar()

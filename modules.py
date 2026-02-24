@@ -35,29 +35,36 @@ def display_my_custom_component(value):
 
 
 
+########## code change ##########
 def NavBar():
+    # CSS to force a container to the bottom left
     st.markdown("""
         <style>
-            .bottom-nav {
+            /* Create a fixed container for the button */
+            .nav-container {
                 position: fixed;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                background: white;
-                border-top: 1px solid #ccc;
-                padding: 12px;
-                text-align: center;
-                z-index: 9999;
+                bottom: 20px;
+                left: 20px;
+                z-index: 999999;
             }
-            .bottom-nav span {
-                color: black
+            /* Target the Streamlit button inside this container */
+            .nav-container div div button {
+                background-color: white !important;
+                color: black !important;
+                border: 2px solid black !important;
+                border-radius: 20px !important;
+                font-weight: bold !important;
+                box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
             }
         </style>
-
-        <div class="bottom-nav">
-            <span>Navbar</span>
-        </div>
     """, unsafe_allow_html=True)
+
+    # Place the button inside a div wrapper
+    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+    if st.button("🏠", key="nav_home_btn"):
+        st.session_state.page = "home"
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 
@@ -147,8 +154,12 @@ def CompanySearch(container):
         col_icon, col_search = st.columns([1, 10])
         
         with col_icon:
-            # We use markdown for the circular button look
-            st.markdown('<div class="user-btn">👤</div>', unsafe_allow_html=True)
+            ########## code change ##########
+            # Replace the static div with a real button
+            if st.button("👤", key="user_profile_btn"):
+                st.session_state.page = "profile"
+                st.rerun()
+            #################################
             
         with col_search:
             # Your search bar stays here
@@ -162,6 +173,43 @@ def CompanySearch(container):
         # This part makes "Enter" feel real:
         if company_name:
             st.info(f"Searching for:  {company_name}")
+
+
+
+
+
+########## code change ##########
+def ProfilePage(container):
+    with container:
+        st.title("User Profile")
+        
+        # User Info
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.markdown("<h1 style='font-size: 100px; margin: 0;'>👤</h1>", unsafe_allow_html=True)
+        with col2:
+            st.subheader("John Doe")
+            st.write("**University:** Google Cloud Tech")
+            st.write("**Major:** Computer Science")
+        
+        st.divider()
+        
+        # Resume Section
+        st.subheader("📄 Resume Analysis")
+        st.write("Provide your resume to match with job keywords.")
+        
+        # Two ways to provide a resume
+        resume_mode = st.radio("Choose input method:", ["File Upload", "Plain Text"], horizontal=True)
+        
+        if resume_mode == "File Upload":
+            uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload")
+            if uploaded_file:
+                st.success("File received!")
+        else:
+            resume_text = st.text_area("Paste resume text here...", height=250, key="resume_text_area")
+            if resume_text:
+                st.session_state.user_resume = resume_text
+                st.info("Resume saved to session.")
 
 def Render_Job(container, jobs):
     html = """
