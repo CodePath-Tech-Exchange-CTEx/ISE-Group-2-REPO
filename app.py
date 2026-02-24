@@ -6,9 +6,10 @@
 #############################################################################
 
 import streamlit as st
-from modules import *
-from modules import GeminiChatbot, NavBar, Render_Job
+
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job
 from data_fetcher import get_jobs
+
 
 userId = 'user1'
 
@@ -48,9 +49,18 @@ def main_container():
     return container
 
 
+
 # Render app container
 if __name__ == '__main__':
     app_container = main_container()
+
+
+    #jobs = get_jobs()
+    #Render_Job_Swiping(app_container, jobs)
+
+    #MODULE4 
+    CompanySearch(app_container)
+
 
     # NEW: Render the chatbot prototype
     GeminiChatbot(app_container)
@@ -63,5 +73,4 @@ if __name__ == '__main__':
     # Render nav bar outside main container
     NavBar()
 
-    
 
