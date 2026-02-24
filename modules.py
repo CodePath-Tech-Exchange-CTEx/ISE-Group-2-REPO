@@ -69,6 +69,7 @@ def GeminiChatbot(container):
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
+            width: 45%;
         }
         
 
