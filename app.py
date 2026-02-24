@@ -7,7 +7,7 @@
 
 import streamlit as st
 
-fromfrom modules import GeminiChatbot, NavBar, CompanySearch, Render_Job
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job
 from data_fetcher import get_jobs
 
 
