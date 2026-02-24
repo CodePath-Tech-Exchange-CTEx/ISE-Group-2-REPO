@@ -8,7 +8,9 @@
 
 import unittest
 from streamlit.testing.v1 import AppTest
-from modules import GeminiChatbot #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from modules import GeminiChatbot, Render_Job, CompanySearch #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from unittest.mock import patch
+import modules
 
 # Write your tests below
 
@@ -53,6 +55,45 @@ class TestCompanySearch(unittest.TestCase):
 
         # Check if the search bar's internal value is now 'Google'
         self.assertEqual(search_bar.value, "Google", "The search bar did not update its value")
+#fake container that behaves like a real Streamlit container, but does nothing.
+class DummyContainer:
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc, tb): return False
+    
+class TestJobRender(unittest.TestCase):
+        def test_render_skills(self):
+                html = modules.render_skills(["Python"])
+                self.assertIn("Python", html)
+                self.assertIn('class="chip"', html)
+
+        #This replaces the Streamlit rendering call with a mock function during this test.
+        @patch("modules.components.html") 
+        def test_render_job_outputs_html(self, mock_html):
+                jobs = [{
+                        "id": "google-1",
+                        "company": "Google",
+                        "title": "Software Engineer Intern Summer 2026",
+                        "description": "Work on scalable systems.",
+                        "skills": ["Python", "Git"],
+                        "experience": "Projects accepted",
+                        "location": "Florida",
+                        }]
+                #Calls a mock_html
+                modules.Render_Job(DummyContainer(), jobs)
+
+                # Grab the HTML passed to components.html
+                html = mock_html.call_args[0][0]
+
+                # Basic checks
+                self.assertIn("Google", html)
+                self.assertIn("Software Engineer Intern Summer 2026", html)
+                self.assertIn("Work on scalable systems.", html)
+                self.assertIn("Python", html)
+                self.assertIn("Git", html)
+                self.assertIn("Florida", html)
+
+
+
 if __name__ == "__main__":
     unittest.main()
 
