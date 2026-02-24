@@ -178,12 +178,32 @@ def CompanySearch(container):
 
 
 
-########## code change ##########
 def ProfilePage(container):
+    # CSS for centered elements and labels
+    st.markdown("""
+        <style>
+            .resume-section {
+                padding: 20px;
+                margin-top: 10px;
+                text-align: center;
+            }
+
+            .upload-label {
+                color: black;
+                font-weight: bold;
+                margin-bottom: 5px;
+                display: block;
+                text-align: center;
+            }
+
+
+        </style>
+    """, unsafe_allow_html=True)
+
     with container:
         st.title("User Profile")
         
-        # User Info
+        # User Info Section
         col1, col2 = st.columns([1, 4])
         with col1:
             st.markdown("<h1 style='font-size: 100px; margin: 0;'>👤</h1>", unsafe_allow_html=True)
@@ -193,23 +213,50 @@ def ProfilePage(container):
             st.write("**Major:** Computer Science")
         
         st.divider()
+
+        # START CENTERED RESUME AREA (No border)
+        st.markdown('<div class="resume-section">', unsafe_allow_html=True)
         
-        # Resume Section
-        st.subheader("📄 Resume Analysis")
-        st.write("Provide your resume to match with job keywords.")
+        # Centered Subheader
+        st.markdown("<h2 style='text-align: center;'>⬇️Resume Analysis</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'>Provide your resume to match with job keywords.</p>", unsafe_allow_html=True)
+
+        # Center columns for buttons
+        _, btn_col1, btn_col2, _ = st.columns([1.5, 2, 2, 1.5])
+
+        # Initialize selection state if not exists
+        if "resume_mode" not in st.session_state:
+            st.session_state.resume_mode = "File"
+
+        with btn_col1:
+            st.markdown('<span class="upload-label">File Upload</span>', unsafe_allow_html=True)
+            if st.button("📁", use_container_width=True, key="btn_file"):
+                st.session_state.resume_mode = "File"
+                st.rerun()
+
+        with btn_col2:
+            st.markdown('<span class="upload-label">Text Upload</span>', unsafe_allow_html=True)
+            if st.button("📝", use_container_width=True, key="btn_text"):
+                st.session_state.resume_mode = "Text"
+                st.rerun()
+
+        # Display the input area based on button selection
+        st.write("") # Spacer
         
-        # Two ways to provide a resume
-        resume_mode = st.radio("Choose input method:", ["File Upload", "Plain Text"], horizontal=True)
-        
-        if resume_mode == "File Upload":
-            uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload")
-            if uploaded_file:
-                st.success("File received!")
-        else:
-            resume_text = st.text_area("Paste resume text here...", height=250, key="resume_text_area")
-            if resume_text:
-                st.session_state.user_resume = resume_text
-                st.info("Resume saved to session.")
+        # Create a nested column to keep the input area from stretching too wide
+        _, input_col, _ = st.columns([1, 4, 1])
+        with input_col:
+            if st.session_state.resume_mode == "File":
+                uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload", label_visibility="collapsed")
+                if uploaded_file:
+                    st.success("File received!")
+            else:
+                resume_text = st.text_area("Paste resume text here...", height=200, key="resume_text_area", label_visibility="collapsed")
+                if resume_text:
+                    st.session_state.user_resume = resume_text
+                    st.info("Resume saved to session.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def Render_Job(container, jobs):
     html = """
