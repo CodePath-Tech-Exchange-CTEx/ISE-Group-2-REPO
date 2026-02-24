@@ -151,7 +151,7 @@ Mock_Jobs = [
         "company": "Google",
         "title": "Software Engineer Intern Summer 2026",
         "description": "Work on scalable systems.",
-        "skills": ["Python", "Data Structures", "Git", "AWS"],
+        "skills": ["Python", "Data Structures", "Git","Swift", "Postgres", "Flask"],
         "experience": "Projects / coursework accepted",
         "location" : "Florida"
     },
