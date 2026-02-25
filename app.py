@@ -82,14 +82,14 @@ if __name__ == '__main__':
     if st.session_state.page == "home":
         # Render Home Page
         CompanySearch(app_container)
-        GeminiChatbot(app_container)
+        
         
         jobs = get_jobs()
-        
         Render_Job(app_container, jobs)
-
+        
+        GeminiChatbot(app_container)
         # --- NEW: MODULE 5 SECTION ---
-        # We create a nice bordered area for the resume tool
+   
         # with app_container.expander("🚀 Quick Match: Compare your Resume", expanded=True):
         #     col1, col2 = st.columns(2)
         ResumeUploader(app_container)
