@@ -440,3 +440,132 @@ def render_skills(skills):
     for skill in skills: 
         chips += f'<span class="chip">{skill}</span>' 
     return chips
+
+def ResumeUploader(container):
+    """
+    Module 5: Function 1 - Upload Resume with High-Contrast Button Styling
+    """
+    # Targeting the internal Streamlit upload button and container
+    st.markdown("""
+        <style>
+            /* 1. Style the main uploader box */
+            [data-testid="stFileUploader"] {
+                border-radius: 20px;
+                padding: 10px;
+                background-color: #ffffff;
+                box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.08);
+                border: 1px solid #e5e7eb;
+            }
+
+            /* 2. Target the 'Browse files' button specifically */
+            [data-testid="stFileUploader"] section button {
+                background-color: #000000 !important;
+                color: white !important;
+                border-radius: 10px !important;
+                border: none !important;
+                padding: 0.5rem 1rem !important;
+                transition: 0.3s;
+            }
+
+            /* FIX: Target the filename and file size text */
+            [data-testid="stFileUploaderFileName"], 
+            [data-testid="stFileUploaderFileData"] {
+                color: #000000 !important;
+                font-weight: 500 !important;
+            }
+
+            /* FIX: Target the 'Uploaded' checkmark and status text */
+            [data-testid="stFileUploaderFileStatus"] {
+                color: #000000 !important;
+            }
+
+            /* 3. Add a hover effect for the button */
+            [data-testid="stFileUploader"] section button:hover {
+                background-color: #333333 !important;
+                box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+            }
+
+            /* 4. Style the text instruction (e.g., 'Limit 200MB per file') */
+            [data-testid="stFileUploader"] section {
+                color: #000000;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with container:
+        st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 10px;'>Upload Resume</p>", unsafe_allow_html=True)
+        uploaded_file = st.file_uploader(
+            "Upload Resume", 
+            type=["pdf", "docx"], 
+            key="home_resume_uploader",
+            label_visibility="collapsed"
+        )
+        if uploaded_file:
+            st.session_state['current_resume'] = uploaded_file
+            st.success("✅ File Ready!")
+        # --- ADDED THIS SECTION ---
+        else:
+            if 'current_resume' in st.session_state:
+                del st.session_state['current_resume']
+                st.rerun()
+
+def KeywordMatcher(container):
+    """
+    Module 5: Function 2 - Compare Keywords with Styling
+    """
+    # Custom CSS for the match results area
+    st.markdown("""
+        <style>
+            /* 1. Style for the ENABLED (Active) button */
+            div.stButton > button[kind="primary"] {
+                background-color: #000000 !important;
+                color: white !important;
+                border: 2px solid #000000 !important;
+                border-radius: 10px !important;
+                transition: 0.3s;
+            }
+
+            /* 2. Style for the DISABLED button - MAKING IT VISIBLE */
+            div.stButton > button:disabled {
+                background-color: #f0f2f6 !important; /* Light gray background */
+                color: #808080 !important;          /* Darker gray text for contrast */
+                border: 2px dashed #cccccc !important; /* Dashed border to show it's 'inactive' */
+                cursor: not-allowed !important;
+                opacity: 1 !important;              /* Prevent Streamlit from fading it out too much */
+            }
+            
+            .match-card {
+                background-color: white;
+                border: 2px solid #000000;
+                padding: 20px;
+                border-radius: 15px;
+                text-align: center;
+                margin-top: 10px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with container:
+        st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 5px;'>Compare to Job Description </p>", unsafe_allow_html=True)
+        
+        # Check if file exists in session state
+        if 'current_resume' not in st.session_state:
+            st.button("Compare to Job Descriptions", disabled=True, use_container_width=True, key="disabled_match_btn")
+            st.caption("⚠️ Please upload a resume to enable analysis.")
+        else:
+            if st.button("Analyze Match Score", type="primary", use_container_width=True):
+                with st.spinner("Analyzing..."):
+                    import time
+                    time.sleep(1.5) 
+                    
+                    score = 78
+                    
+                    # Styled results container
+                    st.markdown(f"""
+                        <div class="match-card">
+                            <h2 style='margin:0; color:#000000;'>{score}%</h2>
+                            <p style='color: #666;'>Keyword Match Score</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.info("**Matches found:** Python, SQL, Communication")
