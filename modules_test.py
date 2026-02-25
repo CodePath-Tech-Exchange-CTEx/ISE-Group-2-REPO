@@ -8,7 +8,7 @@
 
 import unittest
 from streamlit.testing.v1 import AppTest
-from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 from unittest.mock import patch
 import modules
 
