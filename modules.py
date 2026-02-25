@@ -81,9 +81,9 @@ def NavBar():
     """, unsafe_allow_html=True)
     
 
-    containerBITCH = st.container(key="nav_container")
+    container = st.container(key="nav_container")
 
-    with containerBITCH:
+    with container:
         col1, col2, col3 = st.columns([1, 1, 1], vertical_alignment="center", gap="small")
 
         with col1:
