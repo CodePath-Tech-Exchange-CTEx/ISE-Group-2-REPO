@@ -8,6 +8,9 @@ Oluwanifemi Elias, Caleb Ligon, Brian Rivera, Natalia Camejo Del Valle, Kenneth 
 
 https://docs.google.com/document/d/1TYA1KOcid8oyJZhJXN6B-sG-6WRGBM9MNr43UNyI55k/edit?tab=t.0#heading=h.1yah3l3dymsd
 
+#link to website
+https://algorithm-alliance-app-y2zbs7iapq-uc.a.run.app
+
 # Setup
 
 One person needs to follow SETUP.md to complete setup. Ignore this if it is already done for you!
