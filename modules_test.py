@@ -8,15 +8,12 @@
 
 import unittest
 from streamlit.testing.v1 import AppTest
+from io import BytesIO
 from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 from unittest.mock import patch
 import modules
 
 # Write your tests below
-
-
-
-
 
 class TestGeminiChatbot(unittest.TestCase):
         def setUp(self):
@@ -148,6 +145,35 @@ class TestProfilePage(unittest.TestCase):
         
         # Verify it saved to session state
         self.assertEqual(self.at.session_state.user_resume, "Experience with Python and Streamlit")
+
+class TestResumeAndMatcherLogic(unittest.TestCase):
+    def setUp(self):
+        """Initialize the app simulation before each test."""
+        self.at = AppTest.from_file("app.py").run()
+
+    def test_uploader_clears_session_state(self):
+        """Test if the cleanup logic removes current_resume when uploader is empty."""
+        # Adds a mock resume 
+        self.at.session_state['current_resume'] = "Mock Resume"
+        # Runs the app
+        self.at.run()
+        # Verify that the logic correctly deleted the key from session state
+        self.assertNotIn('current_resume', self.at.session_state, 
+                     "Logic failed to delete 'current_resume' when uploader was empty.")
+
+    def test_matcher_disabled_state_ui(self):
+        """Test if the Matcher shows the warning when no resume exists."""
+        # Ensure the state is empty to trigger the 'disabled' UI branch
+        if 'current_resume' in self.at.session_state:
+            del self.at.session_state['current_resume']
+        self.at.run()
+
+        # Verify the specific button is disabled
+        self.assertTrue(self.at.button(key="disabled_match_btn").disabled)
+
+        # Verify that the warning caption is visible to the user
+        warning_exists = any("Please upload a resume" in cap.value for cap in self.at.caption)
+        self.assertTrue(warning_exists)
 
 
 if __name__ == "__main__":
