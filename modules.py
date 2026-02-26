@@ -94,6 +94,8 @@ def GeminiChatbot(container):
         </style>
         """,
         unsafe_allow_html=True
+
+        
     )
    with container:
 
