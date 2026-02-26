@@ -102,6 +102,7 @@ if __name__ == '__main__':
         ProfilePage(app_container)
     #################################
 
+
     # Render nav bar outside main container
     NavBar()
 

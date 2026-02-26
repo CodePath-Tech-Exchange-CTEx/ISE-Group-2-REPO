@@ -8,7 +8,7 @@
 
 import unittest
 from streamlit.testing.v1 import AppTest
-from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher, NavBar #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 from unittest.mock import patch
 import modules
 
@@ -177,6 +177,30 @@ class TestResumeAndMatcherLogic(unittest.TestCase):
         # Verify that the warning caption is visible to the user
         warning_exists = any("Please upload a resume" in cap.value for cap in self.at.caption)
         self.assertTrue(warning_exists)
+
+class TestNavBar(unittest.TestCase):
+    def setUp(self):
+        self.at = AppTest.from_file("app.py").run()
+
+    def test_home_button(self):
+        # Get button
+        home_btn = self.at.button(key="nav_home_btn")
+        
+        # Click and rerun
+        home_btn.click().run()
+        
+        # Check if session state updated
+        self.assertEqual(self.at.session_state.page, "home")
+    
+    def test_profile_button(self):
+        # Get button
+        profile_btn = self.at.button(key="nav_profile_btn")
+        
+        # Click and rerun
+        profile_btn.click().run()
+        
+        # Check if session state updated
+        self.assertEqual(self.at.session_state.page, "profile")
 
 
 if __name__ == "__main__":

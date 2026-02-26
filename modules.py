@@ -34,37 +34,71 @@ def display_my_custom_component(value):
 
 
 
-
 ########## code change ##########
 def NavBar():
-    # CSS to force a container to the bottom left
     st.markdown("""
-        <style>
-            /* Create a fixed container for the button */
-            .nav-container {
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                z-index: 999999;
-            }
-            /* Target the Streamlit button inside this container */
-            .nav-container div div button {
-                background-color: white !important;
-                color: black !important;
-                border: 2px solid black !important;
-                border-radius: 20px !important;
-                font-weight: bold !important;
-                box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    <style>
 
-    # Place the button inside a div wrapper
-    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    if st.button("🏠", key="nav_home_btn"):
-        st.session_state.page = "home"
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    /*Button styling*/
+    .st-key-nav_container .st-key-nav_home_btn button,
+    .st-key-nav_container .st-key-nav_profile_btn button,
+    .st-key-nav_container .st-key-nav_settings_btn button {
+        background: inherit !important;
+        font-size: 24px !important;
+        color: gray !important;
+        display: flex;
+        text-align: center;
+    }
+
+    /*Button text styling*/
+    .st-key-nav_container .st-key-nav_home_btn button p,
+    .st-key-nav_container .st-key-nav_profile_btn button p,
+    .st-key-nav_container .st-key-nav_settings_btn button p{
+        font-size: 30px !important;
+        color: gray !important;
+    }
+
+    /*NavBar */
+    .st-key-nav_container {
+        display: flex;
+        padding-top: 12px;
+        padding-bottom: 12px;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        background: #ffffff;
+        box-shadow: 0px -3px 25px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .st-key-nav_container .stVerticalBlock {
+        display: flex;
+        justify-content: space-around;
+    }
+
+    </style>
+    """, unsafe_allow_html=True)
+    
+
+    container = st.container(key="nav_container")
+
+    with container:
+        col1, col2, col3 = st.columns([1, 1, 1], vertical_alignment="center", gap="small")
+
+        with col1:
+            st.button("⚙️", key="nav_settings_btn")
+
+        with col2:
+            if st.button("🏠", key="nav_home_btn"):
+                st.session_state.page = "home"
+                st.rerun()
+        with col3: 
+            if st.button("👤", key="nav_profile_btn"):
+                st.session_state.page = "profile"
+                st.rerun()
 
 
 
