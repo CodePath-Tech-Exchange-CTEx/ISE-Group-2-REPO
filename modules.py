@@ -198,7 +198,7 @@ def CompanySearch(container):
             #################################
             
         with col_search:
-            # Your search bar stays here
+            # Search bar stays here
             company_name = st.text_input(
                 "Search", 
                 placeholder="🔎 | Search company...", 
@@ -209,9 +209,7 @@ def CompanySearch(container):
         # This part makes "Enter" feel real:
         if company_name:
             st.info(f"Searching for:  {company_name}")
-
-
-
+    return company_name
 
 
 def ProfilePage(container):

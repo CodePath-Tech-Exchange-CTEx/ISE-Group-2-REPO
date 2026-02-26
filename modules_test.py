@@ -202,6 +202,31 @@ class TestNavBar(unittest.TestCase):
         # Check if session state updated
         self.assertEqual(self.at.session_state.page, "profile")
 
+class TestSearchIntegration(unittest.TestCase):
+    def setUp(self):
+        """Initialize the app simulation."""
+        self.at = AppTest.from_file("app.py").run()
+
+    def test_search_filtering_logic(self):
+        """Test if the search bar correctly filters job results."""
+        
+        # 1. Select search input and type 'Google'
+        search_bar = self.at.text_input(key="search_with_user_icon")
+        search_bar.set_value("Google").run()
+
+        # 2. Check the info feedback
+        self.assertIn("Google", self.at.info[0].value)
+
+        # 3. Find the iframe component
+        iframes = self.at.get("iframe")
+        self.assertTrue(len(iframes) > 0, "No iframe components found")
+        
+        # 4. Use 'srcdoc' Accessing the proto object to get the internal HTML content
+        rendered_content = iframes[0].proto.srcdoc
+        
+        # 5. Final Assertion
+        self.assertIn("Google", rendered_content)
+
 
 if __name__ == "__main__":
     unittest.main()
