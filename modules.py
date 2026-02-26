@@ -39,6 +39,7 @@ def NavBar():
     st.markdown("""
     <style>
 
+    /*Button styling*/
     .st-key-nav_container .st-key-nav_home_btn button,
     .st-key-nav_container .st-key-nav_profile_btn button,
     .st-key-nav_container .st-key-nav_settings_btn button {
@@ -49,6 +50,7 @@ def NavBar():
         text-align: center;
     }
 
+    /*Button text styling*/
     .st-key-nav_container .st-key-nav_home_btn button p,
     .st-key-nav_container .st-key-nav_profile_btn button p,
     .st-key-nav_container .st-key-nav_settings_btn button p{
@@ -56,6 +58,7 @@ def NavBar():
         color: gray !important;
     }
 
+    /*NavBar */
     .st-key-nav_container {
         display: flex;
         padding-top: 12px;
@@ -71,10 +74,9 @@ def NavBar():
         box-shadow: 0px -3px 25px 2px rgba(0, 0, 0, 0.3);
     }
 
-    .st-key-nav_container [data-testid="column"] {
+    .st-key-nav_container .stVerticalBlock {
         display: flex;
-        justify-content: center;
-        flex: 1;
+        justify-content: space-around;
     }
 
     </style>
