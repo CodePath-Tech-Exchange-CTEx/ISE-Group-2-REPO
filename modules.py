@@ -111,7 +111,7 @@ def GeminiChatbot(container):
             border: 2px solid black !important;
             border-radius: 30px; 
             width: 50%;
-            margin-top: -25%; 
+            margin-top: -12%; 
         }
         
 
