@@ -110,7 +110,8 @@ def GeminiChatbot(container):
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
-            width: 45%;
+            width: 50%;
+            margin-top: -25%; 
         }
         
 
@@ -125,6 +126,8 @@ def GeminiChatbot(container):
             border: 1px solid black !important;
             border-radius: 30px;
         }
+
+
         </style>
         """,
         unsafe_allow_html=True
@@ -133,7 +136,7 @@ def GeminiChatbot(container):
     )
    with container:
 
-        st.markdown('<div id="chatbot-section-wrapper"> <div id ="chatbot-expander">', unsafe_allow_html=True)
+        st.markdown('<div id="chatbot-section-wrapper">', unsafe_allow_html=True)
         # Use an expander to act as a "pop-up" drawer
         with st.expander("🔎 Ask AI Assistant", expanded=False):
             st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
@@ -157,7 +160,7 @@ def GeminiChatbot(container):
                     st.write(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
-        st.markdown('</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 #MODULE 4 User Button + Search Bar:
 def CompanySearch(container):
