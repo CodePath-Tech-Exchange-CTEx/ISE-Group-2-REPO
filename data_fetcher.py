@@ -9,6 +9,9 @@
 #############################################################################
 
 import random
+import requests
+import os
+from extractor import *
 
 users = {
     'user1': {
@@ -40,60 +43,6 @@ users = {
         'friends': ['user1', 'user3'],
     },
 }
-
-
-def get_user_sensor_data(user_id, workout_id):
-    """Returns a list of timestampped information for a given workout.
-
-    This function currently returns random data. You will re-write it in Unit 3.
-    """
-    sensor_data = []
-    sensor_types = [
-        'accelerometer',
-        'gyroscope',
-        'pressure',
-        'temperature',
-        'heart_rate',
-    ]
-    for index in range(random.randint(5, 100)):
-        random_minute = str(random.randint(0, 59))
-        if len(random_minute) == 1:
-            random_minute = '0' + random_minute
-        timestamp = '2024-01-01 00:' + random_minute + ':00'
-        data = random.random() * 100
-        sensor_type = random.choice(sensor_types)
-        sensor_data.append(
-            {'sensor_type': sensor_type, 'timestamp': timestamp, 'data': data}
-        )
-    return sensor_data
-
-
-def get_user_workouts(user_id):
-    """Returns a list of user's workouts.
-
-    This function currently returns random data. You will re-write it in Unit 3.
-    """
-    workouts = []
-    for index in range(random.randint(1, 3)):
-        random_lat_lng_1 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        random_lat_lng_2 = (
-            1 + random.randint(0, 100) / 100,
-            4 + random.randint(0, 100) / 100,
-        )
-        workouts.append({
-            'workout_id': f'workout{index}',
-            'start_timestamp': '2024-01-01 00:00:00',
-            'end_timestamp': '2024-01-01 00:30:00',
-            'start_lat_lng': random_lat_lng_1,
-            'end_lat_lng': random_lat_lng_2,
-            'distance': random.randint(0, 200) / 10.0,
-            'steps': random.randint(0, 20000),
-            'calories_burned': random.randint(0, 100),
-        })
-    return workouts
 
 
 def get_user_profile(user_id):
@@ -145,6 +94,51 @@ def get_genai_advice(user_id):
         'content': advice,
         'image': image,
     }
+
+
+
+def fetch_adzuna_jobs():
+
+    APP_ID = os.getenv("ADZUNA_APP_ID")
+    API_KEY = os.getenv("ADZUNA_API_KEY")
+
+    url = "https://api.adzuna.com/v1/api/jobs/us/search/1"
+
+    params = {
+        "app_id": APP_ID,
+        "app_key": API_KEY,
+        "results_per_page": 20,
+        "what": "Software Engineer" # When user logs in we ask preference and change
+    }
+
+    # Timeout prevents the request from hanging forever
+    response = requests.get(url, params=params, timeout=30)  
+
+    # Raises error if API request failed
+    response.raise_for_status()   
+
+    data = response.json()
+    
+    return data
+
+def parse_jobs(api_data):
+    jobs = []
+
+    for job in api_data.get("results", []):
+        description = job.get("description")
+
+        jobs.append({
+            "id": str(job.get("id")),
+            "company": (job.get("company") or {}).get("display_name"),
+            "title": job.get("title"),
+            "description": description,
+            "skills": extract_skills(description),
+            "experience": extract_experience(description),
+            "location": (job.get("location") or {}).get("display_name"),
+        })
+
+    return jobs
+
 
 Mock_Jobs = [
     {"id": "google-1",

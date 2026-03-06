@@ -57,13 +57,14 @@ class TestCompanySearch(unittest.TestCase):
 
         # Check if the search bar's internal value is now 'Google'
         self.assertEqual(search_bar.value, "Google", "The search bar did not update its value")
+        
+
 #fake container that behaves like a real Streamlit container, but does nothing.
 class DummyContainer:
     def __enter__(self): return self
     def __exit__(self, exc_type, exc, tb): return False
 
 
-    
 class TestJobRender(unittest.TestCase):
         def test_render_skills(self):
                 html = modules.render_skills(["Python"])
@@ -85,6 +86,8 @@ class TestJobRender(unittest.TestCase):
                 #Calls a mock_html
                 modules.Render_Job(DummyContainer(), jobs)
 
+                mock_html.assert_called_once()
+                
                 # Grab the HTML passed to components.html
                 html = mock_html.call_args[0][0]
 
