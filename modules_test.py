@@ -11,10 +11,7 @@ from streamlit.testing.v1 import AppTest
 from unittest.mock import patch, MagicMock
 import sys
 import streamlit as st
-import os
 
-# Write your tests below
-os.environ["GEMINI_API_KEY"]="mock_key"
 from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher, NavBar #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 import modules
 import sqlite3

@@ -118,15 +118,18 @@ def NavBar():
 
 
 
-# Initialize the Gemini Client using st.secrets for security
-# This pulls from .streamlit/secrets.toml locally or the Secrets dashboard in the cloud
+# Hardcoded for school project deployment access
 try:
+    api_key = "AIzaSyAZLDqSgew3L06SORIc6s5ZyvseK2xLLy4" 
+    
     client = genai.Client(
-        api_key=st.secrets.get("GEMINI_API_KEY", "mock_key"),
+        api_key=api_key,
         http_options={'api_version': 'v1'}
     )
-except KeyError:
-    st.error("API Key not found! Please add GEMINI_API_KEY to your Streamlit secrets.")
+except Exception as e:
+    # Changed to a general Exception to catch any initialization issues
+    client = None
+    print(f"Gemini initialization failed: {e}")
 
 def GeminiChatbot(container):
    st.markdown(
