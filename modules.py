@@ -270,7 +270,6 @@ def CompanySearch(container):
     """, unsafe_allow_html=True)
 
     with container:
-<<<<<<< Updated upstream
         # Create two columns: 1 for the icon, 1 for the search 
         col_icon, col_search = st.columns([1, 10])
         
@@ -734,8 +733,4 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {e}")
         
     return text
-=======
-        st.subheader("User Profile")
-        st.write("Example of how to write into the main container from a module")
-        
->>>>>>> Stashed changes
+
