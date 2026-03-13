@@ -46,5 +46,7 @@ jobs:
         python -m pip install flake8 pytest streamlit google-genai pdfplumber        
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Test with pytest
+      env: #tells github to take secret api key and load it so streamlit can find it
+        GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY }}
       run: |
         pytest modules_test.py
