@@ -13,7 +13,18 @@ import streamlit.components.v1 as components
 from google import genai
 from db_handler import init_db, save_chat_log 
 import pdfplumber #used for PDF parsing
-
+try:
+    # Use .get() to avoid crashing if the key is missing during tests
+    api_key = st.secrets.get("GEMINI_API_KEY", "mock_key_for_testing")
+    
+    client = genai.Client(
+        api_key=api_key,
+        http_options={'api_version': 'v1'}
+    )
+except Exception as e:
+    # This prevents the whole app/test suite from crashing
+    client = None
+    print(f"Warning: Gemini Client not initialized: {e}")
 
 
 # This one has been written for you as an example. You may change it as wanted.
