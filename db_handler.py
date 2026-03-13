@@ -36,18 +36,22 @@ def save_chat_log(user_id, resume, job_desc, prompt, response):
         prompt (str): The exact prompt sent to the LLM.
         response (str): The AI-generated output.
     """
-    conn = sqlite3.connect('internmatch.db')
-    c = conn.cursor()
+    try:
+        conn = sqlite3.connect('internmatch.db')
+        c = conn.cursor()
 
-    # Generate ISO 8601 formatted timestamp for chronological sorting
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Generate ISO 8601 formatted timestamp for chronological sorting
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Use parameterized queries to prevent SQL injection
-    c.execute("INSERT INTO chat_history VALUES (?, ?, ?, ?, ?, ?)",
-              (user_id, resume, job_desc, prompt, response, timestamp))
-    
-    conn.commit()
-    conn.close()
+        # Use parameterized queries to prevent SQL injection
+        c.execute("INSERT INTO chat_history VALUES (?, ?, ?, ?, ?, ?)",
+                (user_id, resume, job_desc, prompt, response, timestamp))
+        
+        conn.commit()
+        conn.close()
+        print("SQL SUCCESS: Data committed to internmatch.db")
+    except Exception as e:
+        print(f"SQL ERROR: {e}")
 
 
 def get_chat_history(user_id):

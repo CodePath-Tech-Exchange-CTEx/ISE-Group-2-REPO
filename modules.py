@@ -127,7 +127,7 @@ def GeminiChatbot(container):
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
-            width: 50%;
+            width: 60%;
             margin-top: -12%; 
             background-color: white !important;
         }
@@ -194,6 +194,15 @@ def GeminiChatbot(container):
                 try:
                     with st.chat_message("assistant"):
                         with st.spinner("Thinking..."):
+                            
+                            comparison_prompt = (
+                                f"You are a professional career advisor. Analyze the following:\n\n"
+                                f"USER RESUME: {resume_context}\n\n"
+                                f"JOB DESCRIPTION: {job_context}\n\n"
+                                f"USER QUESTION: {prompt}\n\n"
+                                f"Provide specific feedback on how the user can better align their resume to this job."
+                            )
+
                             response = client.models.generate_content(
                                 model="models/gemini-2.5-flash-lite",
                                 contents=f"Resume: {resume_context}\nJob: {job_context}\nUser Question: {prompt}"
@@ -376,6 +385,10 @@ def ProfilePage(container):
         st.markdown('</div>', unsafe_allow_html=True)
 
 def Render_Job(container, jobs):
+    # Ensures the first job in the carousel is the active context if none is selected
+    if jobs and 'current_job_desc' not in st.session_state:
+        st.session_state['current_job_desc'] = jobs[0].get('description', 'No description available.')
+    
     html = """
     <style>
     /* Horizontal swipe container */

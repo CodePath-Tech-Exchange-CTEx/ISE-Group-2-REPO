@@ -69,17 +69,33 @@ if __name__ == '__main__':
         jobs = get_jobs()
         #Render_Job_Swiping(app_container, jobs)
 
-        #MODULE4
+        # Performs the "Live Filter" based on the search bar input above
         if search_query:
-            jobs_to_show = [j for j in jobs if search_query.lower() in j.get('company', '').lower()]
+            # Filters by company name OR job title
+            jobs_to_show = [j for j in jobs if search_query.lower() in j.get('company', '').lower() 
+                            or search_query.lower() in j.get('title', '').lower()]
         else:
-            jobs_to_show = jobs 
-        #CompanySearch(app_container)
+            # Default view (limiting to 20 for speed at scale)
+            jobs_to_show = jobs[:20] 
 
-        # Store the description of the top job so the chatbot can see it
-        if jobs_to_show:
-            st.session_state['current_job_desc'] = jobs_to_show[0].get('description')
-        
+        # dropdown allows users to specify which job description Gemini should reference.
+        # Placing it here ensures users see the 'Selection' before they see the 'Visuals'.
+        with app_container:
+            if jobs_to_show:
+                job_titles = [f"{j.get('title')} at {j.get('company')}" for j in jobs_to_show]
+                
+                selected_job_name = st.selectbox(
+                    f"🎯 Found {len(jobs_to_show)} jobs. Select one to analyze with Gemini:", 
+                    options=job_titles,
+                    key="ai_job_selector"
+                )
+                
+                # Update the session state so the chatbot has the correct context
+                for j in jobs_to_show:
+                    if f"{j.get('title')} at {j.get('company')}" == selected_job_name:
+                        st.session_state['current_job_desc'] = j.get('description')
+            else:
+                st.warning("No jobs found matching your search.")
 
         Render_Job(app_container, jobs_to_show)
         GeminiChatbot(app_container)
