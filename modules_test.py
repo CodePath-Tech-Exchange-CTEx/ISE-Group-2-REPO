@@ -10,6 +10,10 @@ import unittest
 from streamlit.testing.v1 import AppTest
 from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher, NavBar #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 from unittest.mock import patch, MagicMock
+import sys
+import streamlit as st
+if "GEMINI_API_KEY" not in st.secrets:
+    st.secrets["GEMINI_API_KEY"] = "mock_key_for_testing"
 import modules
 import sqlite3
 
