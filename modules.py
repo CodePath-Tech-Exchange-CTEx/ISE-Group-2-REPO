@@ -121,9 +121,8 @@ def NavBar():
 # Initialize the Gemini Client using st.secrets for security
 # This pulls from .streamlit/secrets.toml locally or the Secrets dashboard in the cloud
 try:
-    # Adding a specific version helps prevent the 404 "Not Found" error
     client = genai.Client(
-        api_key=st.secrets["GEMINI_API_KEY"],
+        api_key=st.secrets.get("GEMINI_API_KEY", "mock_key"),
         http_options={'api_version': 'v1'}
     )
 except KeyError:
