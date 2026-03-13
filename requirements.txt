@@ -1,8 +1,4 @@
 streamlit
-<<<<<<< Updated upstream
 google-genai
 pdfplumber
 sqlite3
-=======
-google-generativeai
->>>>>>> Stashed changes
