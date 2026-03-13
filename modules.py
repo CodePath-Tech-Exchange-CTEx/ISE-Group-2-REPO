@@ -10,6 +10,10 @@
 from internals import create_component
 import streamlit as st
 import streamlit.components.v1 as components
+from google import genai
+from db_handler import init_db, save_chat_log 
+import pdfplumber #used for PDF parsing
+
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -102,31 +106,57 @@ def NavBar():
 
 
 
+
+# Initialize the Gemini Client using st.secrets for security
+# This pulls from .streamlit/secrets.toml locally or the Secrets dashboard in the cloud
+try:
+    # Adding a specific version helps prevent the 404 "Not Found" error
+    client = genai.Client(
+        api_key=st.secrets["GEMINI_API_KEY"],
+        http_options={'api_version': 'v1'}
+    )
+except KeyError:
+    st.error("API Key not found! Please add GEMINI_API_KEY to your Streamlit secrets.")
+
 def GeminiChatbot(container):
    st.markdown(
         """
         <style>
-        
+
+       /* Existing Expander Styles... */
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
             width: 50%;
             margin-top: -12%; 
+            background-color: white !important;
+        }
+
+        /* Force all chat text to be black regardless of theme */
+        [data-testid="stChatMessage"] div, 
+        [data-testid="stChatMessage"] p, 
+        [data-testid="stChatMessage"] li {
+            color: black !important;
+        }
+
+        /* Make the assistant bubble a light color so black text is easy to read */
+        [data-testid="stChatMessage"][data-testid="assistant"] {
+            background-color: #f0f2f6 !important;
+            border: 1px solid #ddd;
         }
         
-
-        div[data-testid="stExpander"] p {
-            color: black !important;
-            font-weight: bold;
+        /* Make the user bubble a different light color */
+        [data-testid="stChatMessage"][data-testid="user"] {
+            background-color: #e1f5fe !important;
+            border: 1px solid #b3e5fc;
         }
-   
 
-        /* Makes the chat input box also have a black outline */
+       
+        
         .stChatInput {
             border: 1px solid black !important;
             border-radius: 30px;
         }
-
 
         </style>
         """,
@@ -139,28 +169,70 @@ def GeminiChatbot(container):
         st.markdown('<div id="chatbot-section-wrapper">', unsafe_allow_html=True)
         # Use an expander to act as a "pop-up" drawer
         with st.expander("🔎 Ask AI Assistant", expanded=False):
-            st.info("The Gemini API is currently inactive. System is in UI-Preview mode.")
             
-            # Chat history logic stays the same
+            # Chat history setup
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
+            # Display previous messages
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
-            if prompt := st.chat_input("Ask a question..."):
+            # Handle new user input
+            if prompt := st.chat_input("Ask how to improve your resume..."):
                 with st.chat_message("user"):
                     st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
 
-                # Mock response
-                response = "I'll be ready to analyze your resume once the API is linked!"
-                with st.chat_message("assistant"):
-                    st.write(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                # 1. Define these BEFORE the try block so they are always available
+                resume_context = st.session_state.get('user_resume', 'No resume provided.')
+                job_context = st.session_state.get('current_job_desc', 'No job selected.')
+
+
+                # Attempt to generate a response from Gemini
+                try:
+                    with st.chat_message("assistant"):
+                        with st.spinner("Thinking..."):
+                            response = client.models.generate_content(
+                                model="models/gemini-2.5-flash-lite",
+                                contents=f"Resume: {resume_context}\nJob: {job_context}\nUser Question: {prompt}"
+                            )
+ 
+                            ai_response = response.text
+                            #FIX the reponse from being white text by overwriting streamlit theming
+                            st.markdown(f"""
+                                <div style="color: black !important;">
+                                    {ai_response}
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                            
+                            st.markdown(ai_response)
+                    
+                    # Store response in session history
+                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
+
+                    #-------change in code-------
+                    # Save the interaction to your SQL database
+                    save_chat_log(
+                        user_id="user1", 
+                        resume=resume_context, 
+                        job_desc=job_context, 
+                        prompt=prompt, 
+                        response=ai_response
+                    )
+                
+                except Exception as e:
+                    st.error(f"AI error occurred: {e}")
+                    # Log the specific error for debugging if needed
+                    print(f"DEBUG: {str(e)}")
 
         st.markdown('</div>', unsafe_allow_html=True)
+
+
+
+
 
 #MODULE 4 User Button + Search Bar:
 def CompanySearch(container):
@@ -285,8 +357,16 @@ def ProfilePage(container):
         with input_col:
             if st.session_state.resume_mode == "File":
                 uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload", label_visibility="collapsed")
+                
                 if uploaded_file:
-                    st.success("File received!")
+                    with st.spinner("Extracting text from resume..."):
+                        extracted_text = extract_text_from_pdf(uploaded_file)
+                        
+                        if extracted_text:
+                            st.session_state.user_resume = extracted_text
+                            st.success("✅ Resume text extracted and saved!")
+                        else:
+                            st.error("Could not extract text. Try a different PDF or use Text Upload.")
             else:
                 resume_text = st.text_area("Paste resume text here...", height=200, key="resume_text_area", label_visibility="collapsed")
                 if resume_text:
@@ -538,9 +618,11 @@ def ResumeUploader(container):
             label_visibility="collapsed"
         )
         if uploaded_file:
-            st.session_state['current_resume'] = uploaded_file
-            st.success("✅ File Ready!")
-        # --- ADDED THIS SECTION ---
+            # Extract text so Gemini can read it later
+            extracted_text = extract_text_from_pdf(uploaded_file)
+            st.session_state['user_resume'] = extracted_text
+            st.session_state['current_resume'] = uploaded_file # For UI tracking
+            st.success("✅ File Ready & Processed!")
         else:
             if 'current_resume' in st.session_state:
                 del st.session_state['current_resume']
@@ -606,3 +688,35 @@ def KeywordMatcher(container):
                     """, unsafe_allow_html=True)
                     
                     st.info("**Matches found:** Python, SQL, Communication")
+
+
+
+
+def extract_text_from_pdf(pdf_file):
+    """
+    Parses an uploaded PDF file and concatenates text from all available pages.
+    
+    Args:
+        pdf_file (file-like object): The PDF file uploaded via Streamlit.
+        
+    Returns:
+        str: A single string containing the full text of the PDF, 
+             separated by newlines. Returns an empty string if extraction fails.
+    """
+    text = ""
+    try:
+        # Open the PDF binary stream
+        with pdfplumber.open(pdf_file) as pdf:
+            # Iterate through each page to ensure multi-page resumes are captured
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                
+                # Only append if the page actually contains extractable text
+                if page_text:
+                    text += page_text + "\n"
+                    
+    except Exception as e:
+        # Log the specific error to the Streamlit UI for user feedback
+        st.error(f"Error reading PDF: {e}")
+        
+    return text

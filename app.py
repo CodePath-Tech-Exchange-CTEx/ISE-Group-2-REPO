@@ -9,7 +9,9 @@ import streamlit as st
 
 from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
 from data_fetcher import get_jobs
+from db_handler import init_db, save_chat_log
 
+init_db() #initialize database on startup
 
 userId = 'user1'
 
@@ -74,26 +76,14 @@ if __name__ == '__main__':
             jobs_to_show = jobs 
         #CompanySearch(app_container)
 
+        # Store the description of the top job so the chatbot can see it
+        if jobs_to_show:
+            st.session_state['current_job_desc'] = jobs_to_show[0].get('description')
+        
 
-        # NEW: Render the chatbot prototype
-        #GeminiChatbot(app_container)
-
-        #jobs = get_jobs()
         Render_Job(app_container, jobs_to_show)
         GeminiChatbot(app_container)
 
-    
-        ########## code change ##########
-        # Logic to switch between Home and Profile
-        #if st.session_state.page == "home":
-            # Render Home Page
-       
-            
-        #jobs = get_jobs()
-        #Render_Job(app_container, jobs)
-
-        # --- NEW: MODULE 5 SECTION ---
-    
         # with app_container.expander("🚀 Quick Match: Compare your Resume", expanded=True):
         #     col1, col2 = st.columns(2)
         ResumeUploader(app_container)

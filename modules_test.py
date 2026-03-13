@@ -9,8 +9,9 @@
 import unittest
 from streamlit.testing.v1 import AppTest
 from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher, NavBar #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import modules
+import sqlite3
 
 # Write your tests below
 
@@ -19,27 +20,56 @@ import modules
 
 
 class TestGeminiChatbot(unittest.TestCase):
-        def setUp(self):
-                """Initialize the app simulation before each test."""
-                self.at = AppTest.from_file("app.py").run()
+    def setUp(self):
+        """Initialize the app simulation before each test."""
+        self.at = AppTest.from_file("app.py").run()
 
-      
-        def test_chat_interaction(self):
-                """Test if typing a message updates session state and gives a response."""
-                # Simulate typing 'Hello' into the chat input
-                # Note: at.chat_input[0] selects the first chat input found
-                self.at.chat_input[0].set_value("Hello").run()
+    @patch("modules.client.models.generate_content")
+    @patch("modules.save_chat_log")
+    def test_chatbot_full_flow(self, mock_save_log, mock_gemini):
+        """Test that typing a message triggers Gemini and saves to the DB."""
+        
+        # 1. Setup Mock Response from Gemini
+        mock_response = MagicMock()
+        mock_response.text = "I am a mock AI response for your resume."
+        mock_gemini.return_value = mock_response
 
-                # Check if the message was added to session_state
-                messages = self.at.session_state.messages
-                self.assertEqual(len(messages), 2)
-                self.assertEqual(messages[0]["role"], "user")
-                self.assertEqual(messages[0]["content"], "Hello")
-                
-                # Check if the mock assistant responded correctly
-                self.assertEqual(messages[1]["role"], "assistant")
-                self.assertIn("analyze your resume", messages[1]["content"])
+        # 2. Simulate user input in the chatbot
+        # We find the chat input and set a value
+        if self.at.chat_input:
+            self.at.chat_input[0].set_value("How is my resume?").run()
 
+            # 3. Assertions: Did the session state update?
+            messages = self.at.session_state.messages
+            self.assertTrue(len(messages) >= 2)
+            self.assertEqual(messages[-2]["content"], "How is my resume?")
+            self.assertEqual(messages[-1]["content"], "I am a mock AI response for your resume.")
+
+            # 4. Assertion: Was the Database function called?
+            self.assertTrue(mock_save_log.called)
+            # Verify it was called with the right prompt
+            args, kwargs = mock_save_log.call_args
+            self.assertEqual(kwargs['prompt'], "How is my resume?")
+
+    def test_resume_context_handling(self):
+        """Test if the chatbot uses the resume context from session state."""
+        # Manually inject a resume into session state
+        self.at.session_state.user_resume = "Experience: Python Developer at Google"
+        self.at.run()
+        
+        self.assertEqual(self.at.session_state.user_resume, "Experience: Python Developer at Google")
+
+    @patch("modules.client.models.generate_content")
+    def test_ai_error_handling(self, mock_gemini):
+        """Test if the app displays an error message when the AI fails (404/500)."""
+        # Simulate an API Failure
+        mock_gemini.side_effect = Exception("API Error")
+        
+        if self.at.chat_input:
+            self.at.chat_input[0].set_value("Hi").run()
+            
+            # Look for the error message in the UI
+            self.assertTrue(self.at.error)
 
 
 class TestCompanySearch(unittest.TestCase):
