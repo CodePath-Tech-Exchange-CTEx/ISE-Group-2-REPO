@@ -1,3 +1,5 @@
 streamlit
 google-genai
 pdfplumber
+python-dotenv
+google-cloud-bigquery

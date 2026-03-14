@@ -1,6 +1,12 @@
 # File that handles all data base query
 import sqlite3
 from datetime import datetime
+from google.cloud import bigquery
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 def init_db():
@@ -63,6 +69,59 @@ def get_chat_history(user_id):
     conn.close()
     return rows
 
-def save_to_jobs_db():
-    pass
+def insert_jobs_to_bigquery(jobs):
+    """
+    This function takes a list of job dictionaries, separates them into
+    job data and skill data, and inserts them into two separate BigQuery tables.
+    """
 
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+
+    if not PROJECT_ID or not DATABASE_ID:
+        print("ERROR: PROJECT_ID and DATABASE_ID environment variables must be set.")
+        return (["Configuration error: PROJECT_ID or DATABASE_ID not set."], 
+                ["Configuration error: Project or Database ID not set."])
+
+    JOBS_TABLE = f"{PROJECT_ID}.{DATABASE_ID}.jobs"
+    SKILLS_TABLE = f"{PROJECT_ID}.{DATABASE_ID}.jobs_skills"
+
+    client = bigquery.Client(project=PROJECT_ID)
+
+    job_rows = []
+    skill_rows = []
+
+    if not jobs:
+        print("No jobs provided to insert.")
+        return ([], [])
+
+    for job in jobs:
+        # Basic validation
+        if not job.get("job_id"):
+            print(f"Skipping job with no ID: {job.get('job_title')}")
+            continue
+
+        job_rows.append({
+            "job_id": job["job_id"],
+            "company_name": job["company_name"],
+            "job_title": job["job_title"],
+            "job_description": job["job_description"],
+            "job_location": job["job_location"],
+            "experience_requirements": job["experience_requirements"],
+        })
+
+        for skill in job.get("skills", []):
+            skill_rows.append({
+                "job_id": job["job_id"],
+                "skill": skill 
+            })
+
+    job_error_handler = []
+    if job_rows:
+        job_error_handler = client.insert_rows_json(JOBS_TABLE, job_rows)
+    
+    skill_error_handler = []
+    if skill_rows:
+        skill_error_handler = client.insert_rows_json(SKILLS_TABLE, skill_rows)
+
+    return job_error_handler, skill_error_handler
