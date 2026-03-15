@@ -11,7 +11,7 @@
 import random
 import requests
 from extractor import *
-from db_handler import insert_jobs_to_bigquery
+from db_handler import insert_jobs_to_bigquery, get_jobs_from_bigquery
 
 from dotenv import load_dotenv
 import os
@@ -176,39 +176,10 @@ def parse_jobs(api_data):
     return jobs
 
 
-Mock_Jobs = [
-    {"id": "google-1",
-        "company": "Google",
-        "title": "Software Engineer Intern Summer 2026",
-        "description": "Work on scalable systems.",
-        "skills": ["Python", "Data Structures", "Git","Swift", "Postgres", "Flask"],
-        "experience": "Projects / coursework accepted",
-        "location" : "Florida"
-    },
-    {
-        "id": "meta-1",
-        "company": "Meta",
-        "title": "Backend Intern 2026",
-        "description": "Build APIs and services.",
-        "skills": ["Java", "APIs", "Databases"],
-        "experience": "Some backend project experience",
-        "location" : "White House"
-    },
-    {
-        "id": "apple-1",
-        "company": "Apple",
-        "title": "iOS Intern 2026",
-        "description": "Help develop iOS features.",
-        "skills": ["Swift", "Postgres", "Flask"],
-        "experience": "Mobile apps or class projects",
-        "location" : "New York"
-    }
-    ]
-
 def get_jobs():
-    return Mock_Jobs
+    return get_jobs_from_bigquery()
 
 
 if __name__ == "__main__":
-    # This allows the script to be run directly to populate the database
+    # This allows the script to be run directly to populate the database 
     fetch_and_save_jobs()

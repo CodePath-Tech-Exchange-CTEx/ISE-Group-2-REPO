@@ -125,3 +125,36 @@ def insert_jobs_to_bigquery(jobs):
         skill_error_handler = client.insert_rows_json(SKILLS_TABLE, skill_rows)
 
     return job_error_handler, skill_error_handler
+
+def get_jobs_from_bigquery():
+
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+
+    client = bigquery.Client(project=PROJECT_ID)
+
+    query = f"""
+    SELECT j.job_id, j.company_name, j.job_title, j.job_description, j.job_location, j.experience_requirements,
+    ARRAY_AGG(DISTINCT s.skill IGNORE NULLS) AS skills
+    FROM `{PROJECT_ID}.{DATABASE_ID}.jobs` j
+    LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.jobs_skills` s
+    ON j.job_id = s.job_id
+    GROUP BY j.job_id, j.company_name, j.job_title, j.job_description, j.job_location, j.experience_requirements
+    LIMIT {20}
+    """
+
+    query_job = client.query(query)
+    results = query_job.result()
+
+    jobs = []
+    for row in results:
+        jobs.append({
+            "id": row.job_id,
+            "company": row.company_name,
+            "title": row.job_title,
+            "description": row.job_description,
+            "location": row.job_location,
+            "experience": row.experience_requirements,
+            "skills": list(row.skills) if row.skills else []
+        })
+    return jobs

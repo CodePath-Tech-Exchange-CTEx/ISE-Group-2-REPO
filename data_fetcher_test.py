@@ -163,7 +163,64 @@ class TestBigQueryInsert(unittest.TestCase):
         self.assertEqual(job_errors, [])
         self.assertEqual(skill_errors, [])
         self.assertEqual(mock_client.insert_rows_json.call_count, 2)
-    
+
+    @patch("db_handler.os.getenv")
+    @patch("db_handler.bigquery.Client")
+    def test_get_jobs_from_bigquery(self, mock_client_class, mock_getenv):
+        def fake_getenv(key):
+            values = {
+                "PROJECT_ID": "John_Doe",
+                "DATABASE_ID": "jobs"
+            }
+            return values.get(key)
+
+        mock_getenv.side_effect = fake_getenv
+
+        row1 = MagicMock()
+        row1.job_id = "123"
+        row1.company_name = "Google"
+        row1.job_title = "Software Engineer Intern"
+        row1.job_description = "Python and Git required."
+        row1.job_location = "Remote"
+        row1.experience_requirements = "0-2 years of experience"
+        row1.skills = ["python", "git"]
+
+        row2 = MagicMock()
+        row2.job_id = "456"
+        row2.company_name = "Meta"
+        row2.job_title = "Backend Engineer Intern"
+        row2.job_description = "Java and SQL required."
+        row2.job_location = "California"
+        row2.experience_requirements = "1+ years of experience"
+        row2.skills = ["java", "sql"]
+
+        fake_rows = [row1, row2]
+
+        mock_client = MagicMock()
+        mock_query_job = MagicMock()
+        mock_query_job.result.return_value = fake_rows
+        mock_client.query.return_value = mock_query_job
+        mock_client_class.return_value = mock_client
+
+        jobs = db_handler.get_jobs_from_bigquery()
+
+        self.assertEqual(len(jobs), 2)
+
+        self.assertEqual(jobs[0]["id"], "123")
+        self.assertEqual(jobs[0]["company"], "Google")
+        self.assertEqual(jobs[0]["title"], "Software Engineer Intern")
+        self.assertEqual(jobs[0]["location"], "Remote")
+        self.assertEqual(jobs[0]["experience"], "0-2 years of experience")
+        self.assertEqual(jobs[0]["skills"], ["python", "git"])
+
+        self.assertEqual(jobs[1]["id"], "456")
+        self.assertEqual(jobs[1]["company"], "Meta")
+        self.assertEqual(jobs[1]["skills"], ["java", "sql"])
+
+        mock_client_class.assert_called_once_with(project="John_Doe")
+        mock_client.query.assert_called_once()
+
+
 
 
 if __name__ == "__main__":
