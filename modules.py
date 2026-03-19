@@ -235,12 +235,11 @@ def GeminiChatbot(container):
                     # Store response in session history
                     st.session_state.messages.append({"role": "assistant", "content": ai_response})
 
-                    #-------change in code-------
                     # Save the interaction to your SQL database
                     save_chat_log(
-                        user_id="user1", 
-                        resume=resume_context, 
-                        job_desc=job_context, 
+                        user_id=st.session_state.get('user_id', 'user1'), # Use actual logged-in ID if available
+                        resume_id=st.session_state.get('current_resume_id', 'RES-001'), # Pass the ID, not the text
+                        job_id=st.session_state.get('current_job_id', 'JOB-999'),       # Pass the ID, not the text
                         prompt=prompt, 
                         response=ai_response
                     )
