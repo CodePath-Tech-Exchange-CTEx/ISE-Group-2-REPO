@@ -233,12 +233,22 @@ class TestNavBar(unittest.TestCase):
         self.assertEqual(self.at.session_state.page, "profile")
 
 class TestSearchIntegration(unittest.TestCase):
-    def setUp(self):
-        """Initialize the app simulation."""
-        self.at = AppTest.from_file("app.py").run()
-
-    def test_search_filtering_logic(self):
+    @patch("data_fetcher.get_jobs")
+    def test_search_filtering_logic(self, mock_get_jobs):
         """Test if the search bar correctly filters job results."""
+        # Mock the job data so the test doesn't rely on the actual BigQuery database
+        mock_get_jobs.return_value = [{
+            "id": "1", 
+            "company": "Google", 
+            "title": "Software Engineer", 
+            "description": "Building cool stuff", 
+            "location": "Remote", 
+            "experience": "1 year", 
+            "skills": ["Python"]
+        }]
+        
+        # Run the app simulation after setting up the mock
+        self.at = AppTest.from_file("app.py").run()
         
         # 1. Select search input and type 'Google'
         search_bar = self.at.text_input(key="search_with_user_icon")
@@ -260,4 +270,3 @@ class TestSearchIntegration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
