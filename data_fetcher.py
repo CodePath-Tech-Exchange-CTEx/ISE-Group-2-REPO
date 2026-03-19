@@ -10,8 +10,13 @@
 
 import random
 import requests
-import os
 from extractor import *
+from db_handler import insert_jobs_to_bigquery
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 users = {
     'user1': {
@@ -121,20 +126,51 @@ def fetch_adzuna_jobs():
     
     return data
 
+def fetch_and_save_jobs():
+    """
+    Orchestrates fetching jobs from Adzuna API, parsing them, and saving to BigQuery.
+    This function is intended to be run as a standalone script or a scheduled job.
+    """
+    try:
+        api_data = fetch_adzuna_jobs()
+        
+        jobs = parse_jobs(api_data)
+        
+        if not jobs:
+            return False
+        job_errors, skill_errors = insert_jobs_to_bigquery(jobs)
+
+        if not job_errors and not skill_errors:
+            print("Successfully fetched and saved all job data.")
+            return True
+        else:
+            print("Completed with errors.")
+
+            if job_errors:
+                print(f"Job insertion errors: {job_errors}")
+
+            if skill_errors:
+                print(f"Skill insertion errors: {skill_errors}")
+            return False
+
+    except Exception as e:
+        print(f"An error occurred during the fetch-and-save process: {e}")
+        return False
+
 def parse_jobs(api_data):
     jobs = []
 
     for job in api_data.get("results", []):
-        description = job.get("description")
-
+        description = job.get("description") or ""
+        
         jobs.append({
-            "id": str(job.get("id")),
-            "company": (job.get("company") or {}).get("display_name"),
-            "title": job.get("title"),
-            "description": description,
+            "job_id": str(job.get("id")),
+            "company_name": (job.get("company") or {}).get("display_name"),
+            "job_title": job.get("title"),
+            "job_description": description,
+            "job_location": (job.get("location") or {}).get("display_name"),
+            "experience_requirements": extract_experience(description),
             "skills": extract_skills(description),
-            "experience": extract_experience(description),
-            "location": (job.get("location") or {}).get("display_name"),
         })
 
     return jobs
@@ -173,3 +209,6 @@ def get_jobs():
     return Mock_Jobs
 
 
+if __name__ == "__main__":
+    # This allows the script to be run directly to populate the database
+    fetch_and_save_jobs()
