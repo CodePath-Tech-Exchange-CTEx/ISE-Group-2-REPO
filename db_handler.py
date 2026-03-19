@@ -1,4 +1,3 @@
-# File that handles all data base query
 import sqlite3
 from datetime import datetime
 from google.cloud import bigquery
@@ -8,63 +7,76 @@ import os
 
 load_dotenv()
 
-
 def init_db():
     """
-    Initializes the local SQLite database and creates the chat_history table 
-    if it does not already exist.
+    Initializes the database and creates the chatbotTable according to the ER diagram.
     """
-    # Establish connection (creates the file if it doesn't exist)
     conn = sqlite3.connect('internmatch.db') 
     cursor = conn.cursor()
 
-    # Define schema for storing user interactions and LLM context
-    cursor.execute('''CREATE TABLE IF NOT EXISTS chat_history (
-                        user_id TEXT, 
-                        resume_text TEXT, 
-                        job_description TEXT, 
-                        prompt TEXT, 
-                        response TEXT, 
-                        timestamp TEXT
+    # Enable foreign key support in SQLite
+    cursor.execute("PRAGMA foreign_keys = ON;")
+
+    # Updated to match the "chatbotTable" in the image
+    # Note: PK (session_ID) should be auto-incrementing for ease of use
+    cursor.execute('''CREATE TABLE IF NOT EXISTS chatbotTable (
+                        session_ID INTEGER PRIMARY KEY AUTOINCREMENT, 
+                        user_prompt TEXT, 
+                        ai_response TEXT, 
+                        user_ID TEXT, 
+                        resume_ID TEXT, 
+                        job_ID TEXT,
+                        timestamp TEXT,
+                        FOREIGN KEY (user_ID) REFERENCES Users(user_ID),
+                        FOREIGN KEY (resume_ID) REFERENCES Resumes(resume_ID),
+                        FOREIGN KEY (job_ID) REFERENCES JobInformation(job_ID)
                     )''')
     
     conn.commit()
     conn.close()
-            
-def save_chat_log(user_id, resume, job_desc, prompt, response):
+    print("Database initialized with chatbotTable.")
+
+def save_chat_log(user_id, resume_id, job_id, prompt, response):
     """
-    Persists a single chat interaction to the database with a current timestamp.
+    Persists a chat interaction using the foreign keys from the diagram.
     
     Args:
-        user_id (str): Unique identifier for the user.
-        resume (str): The raw text of the uploaded resume.
-        job_desc (str): The target job description.
-        prompt (str): The exact prompt sent to the LLM.
-        response (str): The AI-generated output.
+        user_id (str): FK to Users table
+        resume_id (str): FK to Resumes table
+        job_id (str): FK to JobInformation table
+        prompt (str): The user's input
+        response (str): The AI's output
     """
     try:
         conn = sqlite3.connect('internmatch.db')
         c = conn.cursor()
 
-        # Generate ISO 8601 formatted timestamp for chronological sorting
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Use parameterized queries to prevent SQL injection
-        c.execute("INSERT INTO chat_history VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, resume, job_desc, prompt, response, timestamp))
+        # Column names updated to: user_prompt, ai_response, user_ID, resume_ID, job_ID
+        query = """INSERT INTO chatbotTable 
+                   (user_prompt, ai_response, user_ID, resume_ID, job_ID, timestamp) 
+                   VALUES (?, ?, ?, ?, ?, ?)"""
+        
+        c.execute(query, (prompt, response, user_id, resume_id, job_id, timestamp))
         
         conn.commit()
         conn.close()
-        print("SQL SUCCESS: Data committed to internmatch.db")
+        print("SQL SUCCESS: Data committed to chatbotTable.")
     except Exception as e:
         print(f"SQL ERROR: {e}")
 
-
 def get_chat_history(user_id):
-    # This fulfills  requirement to "read" the saved prompts and history
+    """
+    Retrieves history for a specific user.
+    """
     conn = sqlite3.connect('internmatch.db')
     c = conn.cursor()
-    c.execute("SELECT prompt, response, timestamp FROM chat_history WHERE user_id = ? ORDER BY timestamp DESC", (user_id,))
+    # Updated query to use user_prompt and ai_response
+    c.execute("""SELECT user_prompt, ai_response, timestamp 
+                 FROM chatbotTable 
+                 WHERE user_ID = ? 
+                 ORDER BY timestamp DESC""", (user_id,))
     rows = c.fetchall()
     conn.close()
     return rows
