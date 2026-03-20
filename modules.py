@@ -10,21 +10,16 @@
 from internals import create_component
 import streamlit as st
 import streamlit.components.v1 as components
-from google import genai
-from db_handler import init_db, save_chat_log 
-import pdfplumber #used for PDF parsing
-try:
-    # Use .get() to avoid crashing if the key is missing during tests
-    api_key = st.secrets.get("GEMINI_API_KEY", "mock_key_for_testing")
-    
-    client = genai.Client(
-        api_key=api_key,
-        http_options={'api_version': 'v1'}
-    )
-except Exception as e:
-    # This prevents the whole app/test suite from crashing
-    client = None
-    print(f"Warning: Gemini Client not initialized: {e}")
+import vertexai
+from vertexai.generative_models import GenerativeModel
+import os
+from google.oauth2 import service_account
+
+PROJECT_ID = "oluwanifemi-elias-hu"
+LOCATION = "us-central1"
+
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+model = GenerativeModel("models/gemini-2.5-flash-lite")
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -118,25 +113,10 @@ def NavBar():
 
 
 
-# Hardcoded for school project deployment access
-try:
-    api_key = "AIzaSyAZLDqSgew3L06SORIc6s5ZyvseK2xLLy4" 
-    
-    client = genai.Client(
-        api_key=api_key,
-        http_options={'api_version': 'v1'}
-    )
-except Exception as e:
-    # Changed to a general Exception to catch any initialization issues
-    client = None
-    print(f"Gemini initialization failed: {e}")
-
 def GeminiChatbot(container):
    st.markdown(
         """
         <style>
-
-       /* Existing Expander Styles... */
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
@@ -144,113 +124,67 @@ def GeminiChatbot(container):
             margin-top: -12%; 
             background-color: white !important;
         }
-
-        /* Force all chat text to be black regardless of theme */
         [data-testid="stChatMessage"] div, 
         [data-testid="stChatMessage"] p, 
         [data-testid="stChatMessage"] li {
             color: black !important;
         }
-
-        /* Make the assistant bubble a light color so black text is easy to read */
-        [data-testid="stChatMessage"][data-testid="assistant"] {
-            background-color: #f0f2f6 !important;
-            border: 1px solid #ddd;
-        }
-        
-        /* Make the user bubble a different light color */
-        [data-testid="stChatMessage"][data-testid="user"] {
-            background-color: #e1f5fe !important;
-            border: 1px solid #b3e5fc;
-        }
-
-       
-        
         .stChatInput {
             border: 1px solid black !important;
             border-radius: 30px;
         }
-
         </style>
         """,
         unsafe_allow_html=True
-
-        
     )
-   with container:
 
+   with container:
         st.markdown('<div id="chatbot-section-wrapper">', unsafe_allow_html=True)
-        # Use an expander to act as a "pop-up" drawer
         with st.expander("🔎 Ask AI Assistant", expanded=False):
             
-            # Chat history setup
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
-            # Display previous messages
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
-            # Handle new user input
             if prompt := st.chat_input("Ask how to improve your resume..."):
                 with st.chat_message("user"):
                     st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
 
-                # 1. Define these BEFORE the try block so they are always available
                 resume_context = st.session_state.get('user_resume', 'No resume provided.')
                 job_context = st.session_state.get('current_job_desc', 'No job selected.')
 
-
-                # Attempt to generate a response from Gemini
                 try:
+                    if model is None:
+                        st.error("Model not initialized. Check your credentials.")
+                        return
+
                     with st.chat_message("assistant"):
                         with st.spinner("Thinking..."):
-                            
-                            comparison_prompt = (
-                                f"You are a professional career advisor. Analyze the following:\n\n"
-                                f"USER RESUME: {resume_context}\n\n"
-                                f"JOB DESCRIPTION: {job_context}\n\n"
-                                f"USER QUESTION: {prompt}\n\n"
-                                f"Provide specific feedback on how the user can better align their resume to this job."
+                            full_prompt = (
+                                f"You are a professional career advisor.\n\n"
+                                f"RESUME: {resume_context}\n\n"
+                                f"JOB: {job_context}\n\n"
+                                f"QUESTION: {prompt}"
                             )
 
-                            response = client.models.generate_content(
-                                model="models/gemini-2.5-flash-lite",
-                                contents=f"Resume: {resume_context}\nJob: {job_context}\nUser Question: {prompt}"
-                            )
- 
+                            # FIX: Changed 'client.models.generate_content' to 'model.generate_content'
+                            response = model.generate_content(full_prompt)
                             ai_response = response.text
-                            #FIX the reponse from being white text by overwriting streamlit theming
-                            st.markdown(f"""
-                                <div style="color: black !important;">
-                                    {ai_response}
-                                </div>
-                            """, unsafe_allow_html=True)
-
                             
-                            st.markdown(ai_response)
+                            # Overwrite white text and display
+                            st.markdown(f'<div style="color: black !important;">{ai_response}</div>', unsafe_allow_html=True)
                     
-                    # Store response in session history
                     st.session_state.messages.append({"role": "assistant", "content": ai_response})
-
-                    # Save the interaction to your SQL database
-                    save_chat_log(
-                        user_id=st.session_state.get('user_id', 'user1'), # Use actual logged-in ID if available
-                        resume_id=st.session_state.get('current_resume_id', 'RES-001'), # Pass the ID, not the text
-                        job_id=st.session_state.get('current_job_id', 'JOB-999'),       # Pass the ID, not the text
-                        prompt=prompt, 
-                        response=ai_response
-                    )
                 
                 except Exception as e:
                     st.error(f"AI error occurred: {e}")
-                    # Log the specific error for debugging if needed
                     print(f"DEBUG: {str(e)}")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 
