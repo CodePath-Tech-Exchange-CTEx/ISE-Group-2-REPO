@@ -138,19 +138,24 @@ def fetch_and_save_jobs():
         
         if not jobs:
             return False
-        job_errors, skill_errors = insert_jobs_to_bigquery(jobs)
 
-        if not job_errors and not skill_errors:
+        errors = insert_jobs_to_bigquery(jobs)
+
+        if not errors["job_errors"] and not errors["skill_errors"] and not errors["job_skill_errors"]:
             print("Successfully fetched and saved all job data.")
             return True
         else:
             print("Completed with errors.")
 
-            if job_errors:
-                print(f"Job insertion errors: {job_errors}")
+            if errors["job_errors"]:
+                print(f"Job insertion errors: {errors['job_errors']}")
 
-            if skill_errors:
-                print(f"Skill insertion errors: {skill_errors}")
+            if errors["skill_errors"]:
+                print(f"Skill insertion errors: {errors['skill_errors']}")
+
+            if errors["job_skill_errors"]:
+                print(f"Job-skill insertion errors: {errors['job_skill_errors']}")
+
             return False
 
     except Exception as e:
