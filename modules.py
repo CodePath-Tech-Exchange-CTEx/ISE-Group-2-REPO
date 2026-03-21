@@ -12,14 +12,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
-import os
-from google.oauth2 import service_account
 
 PROJECT_ID = "oluwanifemi-elias-hu"
 LOCATION = "us-central1"
 
 vertexai.init(project=PROJECT_ID, location=LOCATION)
-model = GenerativeModel("models/gemini-2.5-flash-lite")
+model = GenerativeModel("gemini-2.0-flash")
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -171,11 +169,10 @@ def GeminiChatbot(container):
                                 f"QUESTION: {prompt}"
                             )
 
-                            # FIX: Changed 'client.models.generate_content' to 'model.generate_content'
                             response = model.generate_content(full_prompt)
                             ai_response = response.text
                             
-                            # Overwrite white text and display
+                            # Overwrite white text and display black so all the response text is visible
                             st.markdown(f'<div style="color: black !important;">{ai_response}</div>', unsafe_allow_html=True)
                     
                     st.session_state.messages.append({"role": "assistant", "content": ai_response})
