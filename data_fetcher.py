@@ -10,11 +10,16 @@
 
 import random
 import requests
-import os
 from extractor import *
 from google.cloud import bigquery
 
 bq_client = bigquery.Client()
+from db_handler import insert_jobs_to_bigquery, get_jobs_from_bigquery
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 users = {
     'user1': {
@@ -124,20 +129,56 @@ def fetch_adzuna_jobs():
     
     return data
 
+def fetch_and_save_jobs():
+    """
+    Orchestrates fetching jobs from Adzuna API, parsing them, and saving to BigQuery.
+    This function is intended to be run as a standalone script or a scheduled job.
+    """
+    try:
+        api_data = fetch_adzuna_jobs()
+        
+        jobs = parse_jobs(api_data)
+        
+        if not jobs:
+            return False
+
+        errors = insert_jobs_to_bigquery(jobs)
+
+        if not errors["job_errors"] and not errors["skill_errors"] and not errors["job_skill_errors"]:
+            print("Successfully fetched and saved all job data.")
+            return True
+        else:
+            print("Completed with errors.")
+
+            if errors["job_errors"]:
+                print(f"Job insertion errors: {errors['job_errors']}")
+
+            if errors["skill_errors"]:
+                print(f"Skill insertion errors: {errors['skill_errors']}")
+
+            if errors["job_skill_errors"]:
+                print(f"Job-skill insertion errors: {errors['job_skill_errors']}")
+
+            return False
+
+    except Exception as e:
+        print(f"An error occurred during the fetch-and-save process: {e}")
+        return False
+
 def parse_jobs(api_data):
     jobs = []
 
     for job in api_data.get("results", []):
-        description = job.get("description")
-
+        description = job.get("description") or ""
+        
         jobs.append({
-            "id": str(job.get("id")),
-            "company": (job.get("company") or {}).get("display_name"),
-            "title": job.get("title"),
-            "description": description,
+            "job_id": str(job.get("id")),
+            "company_name": (job.get("company") or {}).get("display_name"),
+            "job_title": job.get("title"),
+            "job_description": description,
+            "job_location": (job.get("location") or {}).get("display_name"),
+            "experience_requirements": extract_experience(description),
             "skills": extract_skills(description),
-            "experience": extract_experience(description),
-            "location": (job.get("location") or {}).get("display_name"),
         })
 
     return jobs
@@ -193,36 +234,10 @@ def search_jobs(keyword: str) -> list[dict]:
         return []
 
 
-Mock_Jobs = [
-    {"id": "google-1",
-        "company": "Google",
-        "title": "Software Engineer Intern Summer 2026",
-        "description": "Work on scalable systems.",
-        "skills": ["Python", "Data Structures", "Git","Swift", "Postgres", "Flask"],
-        "experience": "Projects / coursework accepted",
-        "location" : "Florida"
-    },
-    {
-        "id": "meta-1",
-        "company": "Meta",
-        "title": "Backend Intern 2026",
-        "description": "Build APIs and services.",
-        "skills": ["Java", "APIs", "Databases"],
-        "experience": "Some backend project experience",
-        "location" : "White House"
-    },
-    {
-        "id": "apple-1",
-        "company": "Apple",
-        "title": "iOS Intern 2026",
-        "description": "Help develop iOS features.",
-        "skills": ["Swift", "Postgres", "Flask"],
-        "experience": "Mobile apps or class projects",
-        "location" : "New York"
-    }
-    ]
-
 def get_jobs():
-    return Mock_Jobs
+    return get_jobs_from_bigquery()
 
 
+if __name__ == "__main__":
+    # This allows the script to be run directly to populate the database 
+    fetch_and_save_jobs()
