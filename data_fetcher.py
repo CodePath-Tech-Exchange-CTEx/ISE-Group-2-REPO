@@ -11,6 +11,9 @@
 import random
 import requests
 from extractor import *
+from google.cloud import bigquery
+
+bq_client = bigquery.Client()
 from db_handler import insert_jobs_to_bigquery, get_jobs_from_bigquery
 
 from dotenv import load_dotenv
@@ -179,6 +182,56 @@ def parse_jobs(api_data):
         })
 
     return jobs
+
+def get_job_count_by_company(company_name: str) -> int:
+    """Count the number of open job listings for a given company_name."""
+    query = """
+        SELECT COUNT(*) AS cnt
+        FROM `kenneth-ye-fiu.ISE.JobInformation`
+        WHERE LOWER(company_name) = LOWER(@company_name)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("company_name", "STRING", company_name)
+        ]
+    )
+    try:
+        result = bq_client.query(query, job_config=job_config).result()
+        for row in result:
+            return row.cnt
+        return 0
+    except Exception as e:
+        print(f"get_job_count_by_company error: {e}")
+        return 0
+
+
+def search_jobs(keyword: str) -> list[dict]:
+    query = """
+        SELECT 
+            j.job_ID, j.company_name, j.title, j.description,
+            j.location, j.job_type, j.salary_min, j.salary_max,
+            j.date_posted, j.date_expire,
+            ARRAY_AGG(s.skill_name IGNORE NULLS) AS skills
+        FROM `kenneth-ye-fiu.ISE.JobInformation` j
+        LEFT JOIN `kenneth-ye-fiu.ISE.jobSkillsTable` js ON j.job_ID = js.job_ID
+        LEFT JOIN `kenneth-ye-fiu.ISE.skillsTable` s ON js.skill_ID = s.skill_ID
+        WHERE LOWER(j.title)       LIKE LOWER(CONCAT('%', @keyword, '%'))
+           OR LOWER(j.description) LIKE LOWER(CONCAT('%', @keyword, '%'))
+        GROUP BY j.job_ID, j.company_name, j.title, j.description,
+                 j.location, j.job_type, j.salary_min, j.salary_max,
+                 j.date_posted, j.date_expire
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("keyword", "STRING", keyword)
+        ]
+    )
+    try:
+        result = bq_client.query(query, job_config=job_config).result()
+        return [dict(row) for row in result]
+    except Exception as e:
+        print(f"search_jobs error: {e}")
+        return []
 
 
 def get_jobs():
