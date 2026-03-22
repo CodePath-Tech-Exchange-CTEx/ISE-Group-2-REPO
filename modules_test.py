@@ -237,9 +237,19 @@ class TestSearchIntegration(unittest.TestCase):
         """Initialize the app simulation."""
         self.at = AppTest.from_file("app.py").run()
 
-    def test_search_filtering_logic(self):
+
+    @patch("data_fetcher.get_jobs")  
+    def test_search_filtering_logic(self, mock_get_jobs):  
         """Test if the search bar correctly filters job results."""
+
         
+        mock_get_jobs.return_value = [
+            {"id": "g1", "company": "Google", "title": "Software Engineer",
+             "description": "Python required", "skills": ["Python"], 
+             "experience": "0-2 years", "location": "Remote"}
+        ]
+
+
         # 1. Select search input and type 'Google'
         search_bar = self.at.text_input(key="search_with_user_icon")
         search_bar.set_value("Google").run()
