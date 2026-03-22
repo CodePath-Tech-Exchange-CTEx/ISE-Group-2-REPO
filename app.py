@@ -10,7 +10,7 @@ import streamlit as st
 from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
 from data_fetcher import get_jobs
 
-init_db() #initialize database on startup
+#init_db() #initialize database on startup
 
 userId = 'user1'
 
