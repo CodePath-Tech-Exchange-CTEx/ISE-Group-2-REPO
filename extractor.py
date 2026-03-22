@@ -43,11 +43,13 @@ def extract_skills(description: str):
         return []
     found_skills = []
     description = description.lower()
+    seen = set()
 
     for skill in SKILLS_LIST:
-        if skill in description:
+        if skill in description and skill not in seen:
             found_skills.append(skill)
-    return list(set(found_skills))
+            seen.add(skill)
+    return found_skills
 
 def extract_experience(description: str):
     if not description:
