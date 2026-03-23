@@ -691,31 +691,27 @@ def KeywordMatcher(container):
 
     with container:
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 5px;'>Compare to Job Description </p>", unsafe_allow_html=True)
-        
-        # Check if file exists in session state
-        if 'current_resume' not in st.session_state:
-            st.button("Compare to Job Descriptions", disabled=True, use_container_width=True, key="disabled_match_btn")
+                
+        # 1. Define the condition: Is the resume missing?
+        is_disabled = 'current_resume' not in st.session_state
+         # 2. Use a single button with a dynamic 'disabled' property
+        if st.button("Analyze Match Score", type="primary", use_container_width=True, key="analyze_match_btn", disabled=is_disabled):
+            with st.spinner("Analyzing..."):
+                import time
+                time.sleep(1.5) 
+                
+                score = 78
+                st.markdown(f"""
+                    <div class="match-card">
+                        <h2 style='margin:0; color:#000000;'>{score}%</h2>
+                        <p style='color: #666;'>Keyword Match Score</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                st.info("**Matches found:** Python, SQL, Communication")
+
+        # 3. Show the warning caption only if disabled
+        if is_disabled:
             st.caption("⚠️ Please upload a resume to enable analysis.")
-        else:
-            if st.button("Analyze Match Score", type="primary", use_container_width=True):
-                with st.spinner("Analyzing..."):
-                    import time
-                    time.sleep(1.5) 
-                    
-                    score = 78
-                    
-                    # Styled results container
-                    st.markdown(f"""
-                        <div class="match-card">
-                            <h2 style='margin:0; color:#000000;'>{score}%</h2>
-                            <p style='color: #666;'>Keyword Match Score</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.info("**Matches found:** Python, SQL, Communication")
-
-
-
 
 def extract_text_from_pdf(pdf_file):
     """
@@ -745,4 +741,3 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {e}")
         
     return text
-
