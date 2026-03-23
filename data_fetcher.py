@@ -227,6 +227,89 @@ def search_jobs(keyword: str) -> list[dict]:
 def get_jobs():
     return get_jobs_from_bigquery()
 
+def get_user_profile(user_id: str) -> list:
+
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+
+    # Check for database validity
+    if not PROJECT_ID or not DATABASE_ID:
+        print("Error running query, DATABASE_ID not valid or not configured, or PROJECT_ID is incorrect")
+        return None
+
+    client = bigquery.Client(project=PROJECT_ID)
+
+    query = f"""
+        SELECT
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.date_created,
+        u.is_verified
+        FROM `{PROJECT_ID}.{DATABASE_ID}.User` u
+        WHERE
+        u.user_ID = '{user_id}'
+        """
+
+    query_job = client.query(query)
+    results = query_job.result()
+
+    user = {}
+    row = next(results, None)
+    if row:
+        user = {
+            "email": row.email,
+            "first_name": row.first_name,
+            "last_name": row.last_name,
+            "date_created": row.date_created,
+            "is_verified": row.is_verified
+        }
+    return user
+
+def get_user_resume(user_id: str) -> dict:
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+
+    # Check for database validity
+    if not PROJECT_ID or not DATABASE_ID:
+        print("Error running query, DATABASE_ID not valid or not configured, or PROJECT_ID is incorrect")
+        return None
+
+    client = bigquery.Client(project=PROJECT_ID)
+
+    query = f"""
+        SELECT
+        r.resume_ID,
+        r.user_ID,
+        STRING_AGG(CONCAT(u.first_name, ' ', u.last_name)) AS Name,
+        STRING_AGG(r.name) AS FILENAME,
+        r.location,
+        r.university
+        FROM
+        `{PROJECT_ID}.{DATABASE_ID}.resumesTable` AS r
+        JOIN
+        `{PROJECT_ID}.{DATABASE_ID}.User` AS u
+        ON r.user_ID = u.user_ID
+        WHERE
+        r.user_ID = '{user_id}'
+        GROUP BY
+        r.resume_ID,
+        r.name,
+        r.user_ID,
+        r.location,
+        r.university
+        ORDER BY
+        r.user_ID
+        """
+    
+    resume = {}
+
+    query_job = client.query(query)
+    results = query_job.result()
+
+    for row in results:
+        resume[f"{row.resume_ID}"] = {"Name": row.Name, "user_ID": row.user_ID, "FILENAME": row.FILENAME, "location": row.location, "university": row.university}
+    return resume
 
 if __name__ == "__main__":
     # This allows the script to be run directly to populate the database 
