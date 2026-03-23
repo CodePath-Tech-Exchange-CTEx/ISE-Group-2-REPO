@@ -21,7 +21,14 @@ LOCATION = "us-central1"
 
 # do not use global initialization, move them into a helper
 def get_gemini_model():
+    """
+    Initializes the Vertex AI environment using the project-specific 
+    credentials and returns a GenerativeModel instance. 
+    Using a helper ensures we don't hit initialization errors on app reload.
+    """
     vertexai.init(project=PROJECT_ID, location=LOCATION)
+    # Using Gemini 1.5 Pro for its high reasoning capabilities and large context window,
+    # which is ideal for comparing long resumes against detailed job descriptions.
     return GenerativeModel("gemini-2.5-pro")
 
 
@@ -42,9 +49,6 @@ def display_my_custom_component(value):
     # of the HTML file. HTML must be placed inside the "custom_components" folder.
     html_file_name = "my_custom_component"
     create_component(data, html_file_name)
-
-
-
 
 
 ########## code change ##########
@@ -195,7 +199,7 @@ def GeminiChatbot(container):
                     # Convert the list of skills from BigQuery into a readable string
                     skills_list = ", ".join(resume_data.get('skills', [])) if resume_data.get('skills') else "No skills listed."
                     
-                    # Get unstructured text extracted from the file (PDF/DOCX)
+                    # Get unstructured text extracted from the file (PDF)
                     full_resume_text = st.session_state.get('user_resume', 'No full resume text uploaded.')
                     
                     # Get the job description from Adzuna carousel
@@ -204,11 +208,13 @@ def GeminiChatbot(container):
                     with st.chat_message("assistant"):
                         with st.spinner("Analyzing with Vertex AI..."):
 
-                            # Call funciton instead of using global method only access when needed
+                            # Call function instead of using global method only access when needed
                             model = get_gemini_model()
                             
                             # 4. PROMPT ENGINEERING (Semantic Comparison)
-                            # We feed all three parts: Profile Metadata, Full Resume, and Job Description
+                            # We feed all three parts: Profile Metadata, Full Resume, and Job Description.
+                            # The structured 'CANDIDATE PROFILE' helps Gemini identify core strengths,
+                            # while the 'FULL RESUME TEXT' allows it to see details like work dates and projects.
                             full_prompt = (
                                 f"You are a professional career advisor and a friendly helpful hand in suggesting ways to improve skills, experiences, projects, etc.\n\n"
                                 f"CANDIDATE PROFILE:\n- Name: {resume_data.get('name', 'Applicant')}\n- Skills: {skills_list}\n\n"
@@ -216,11 +222,12 @@ def GeminiChatbot(container):
                                 f"TARGET JOB DESCRIPTION:\n{job_desc}\n\n"
                                 f"USER QUESTION: {prompt}\n\n"
                                 f"INSTRUCTIONS: If the user asks for help with their resume Compare the resume against the job description. "
-                                f" Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
+                                f"Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
                             )
 
                             # 5. VERTEX AI GENERATION
-                            # We use 'model' defined at the top of modules.py via vertexai.init
+                            # We use 'model' defined at the top of modules.py via vertexai.init.
+                            # The response is generated based on the grounded data provided in the prompt.
                             response = model.generate_content(full_prompt)
                             ai_response = response.text
                             
@@ -228,7 +235,8 @@ def GeminiChatbot(container):
                             st.markdown(ai_response)
                     
                     # 6. SAVE INTERACTION BACK TO BIGQUERY
-                    # This closes the loop: Data -> AI -> Data Storage
+                    # This closes the loop: Data -> AI -> Data Storage.
+                    # We log the user's specific prompt and the AI's tailored response for future context retrieval.
                     save_chat_session(
                         user_id=user_id,
                         resume_id=resume_id,
@@ -241,6 +249,7 @@ def GeminiChatbot(container):
                     st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 
                 except Exception as e:
+                    # Catch authentication or API quota errors and display them safely to the user
                     st.error(f"AI error occurred: {e}")
                     print(f"DEBUG ERROR: {str(e)}")
 
@@ -370,7 +379,7 @@ def ProfilePage(container):
         _, input_col, _ = st.columns([1, 4, 1])
         with input_col:
             if st.session_state.resume_mode == "File":
-                uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload", label_visibility="collapsed")
+                uploaded_file = st.file_uploader("Upload PDF", type=["pdf"], key="resume_upload", label_visibility="collapsed")
                 
                 if uploaded_file:
                     with st.spinner("Extracting text from resume..."):
@@ -631,16 +640,14 @@ def ResumeUploader(container):
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 10px;'>Upload Resume</p>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload Resume", 
-            type=["pdf", "docx"], 
+            type=["pdf"], 
             key="home_resume_uploader",
             label_visibility="collapsed"
         )
         if uploaded_file:
-            # Check file extension and extract text accordingly
+            # Check file extension and extract text (Removed DOCX logic)
             if uploaded_file.name.lower().endswith('.pdf'):
                 extracted_text = extract_text_from_pdf(uploaded_file)
-            elif uploaded_file.name.lower().endswith('.docx'):
-                extracted_text = extract_text_from_docx(uploaded_file)
             else:
                 extracted_text = ""
 
@@ -725,13 +732,3 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         st.error(f"PDF Error: {e}")
     return text
-
-def extract_text_from_docx(docx_file):
-    """ Uses python-docx to pull text from Word documents. """
-    try:
-        doc = docx.Document(docx_file)
-        return "\n".join([para.text for para in doc.paragraphs])
-    except Exception as e:
-        st.error(f"DOCX Error: {e}")
-        return ""
-
