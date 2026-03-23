@@ -12,6 +12,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context
+import pdfplumber
+
 
 PROJECT_ID = "oluwanifemi-elias-hu"
 LOCATION = "us-central1"
@@ -110,11 +113,12 @@ def NavBar():
 
 
 
-
 def GeminiChatbot(container):
-   st.markdown(
+    # --- CSS STYLING ---
+    st.markdown(
         """
         <style>
+        /* Expander as a "pop-up" drawer */
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
@@ -122,11 +126,26 @@ def GeminiChatbot(container):
             margin-top: -12%; 
             background-color: white !important;
         }
+
+        /* Force chat text to be black for readability */
         [data-testid="stChatMessage"] div, 
         [data-testid="stChatMessage"] p, 
         [data-testid="stChatMessage"] li {
             color: black !important;
         }
+
+        /* Assistant bubble styling */
+        [data-testid="stChatMessage"][data-testid="assistant"] {
+            background-color: #f0f2f6 !important;
+            border: 1px solid #ddd;
+        }
+        
+        /* User bubble styling */
+        [data-testid="stChatMessage"][data-testid="user"] {
+            background-color: #e1f5fe !important;
+            border: 1px solid #b3e5fc;
+        }
+
         .stChatInput {
             border: 1px solid black !important;
             border-radius: 30px;
@@ -136,53 +155,82 @@ def GeminiChatbot(container):
         unsafe_allow_html=True
     )
 
-   with container:
+    with container:
         st.markdown('<div id="chatbot-section-wrapper">', unsafe_allow_html=True)
+        
         with st.expander("🔎 Ask AI Assistant", expanded=False):
             
+            # 1. IDENTIFY CONTEXT
+            # Pull IDs from session state (defaults provided if keys don't exist yet)
+            user_id = st.session_state.get('user_id', 'user1')
+            resume_id = st.session_state.get('current_resume_id', 'res01')
+            job_id = st.session_state.get('current_job_id', 'job01')
+
+            # Initialize local UI chat history so messages persist during the session
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
+            # Render existing messages from the current session
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
+            # 2. HANDLE NEW USER INPUT
             if prompt := st.chat_input("Ask how to improve your resume..."):
+                # Display user message immediately
                 with st.chat_message("user"):
                     st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
 
-                resume_context = st.session_state.get('user_resume', 'No resume provided.')
-                job_context = st.session_state.get('current_job_desc', 'No job selected.')
-
                 try:
-                    if model is None:
-                        st.error("Model not initialized. Check your credentials.")
-                        return
-
+                    # 3. FETCH BIGQUERY DATA FOR AI CONTEXT
+                    # Call the function from data_fetcher.py to get real DB data
+                    resume_data = get_resume_with_skills(resume_id)
+                    
+                    # Convert the list of skills from BigQuery into a readable string
+                    skills_list = ", ".join(resume_data.get('skills', [])) if resume_data.get('skills') else "No skills listed."
+                    
                     with st.chat_message("assistant"):
-                        with st.spinner("Thinking..."):
+                        with st.spinner("Analyzing with Vertex AI..."):
+                            
+                            # 4. CONSTRUCT THE STRUCTURED PROMPT (Prompt Engineering)
+                            # We inject real data from BigQuery into the instructions
                             full_prompt = (
                                 f"You are a professional career advisor.\n\n"
-                                f"RESUME: {resume_context}\n\n"
-                                f"JOB: {job_context}\n\n"
-                                f"QUESTION: {prompt}"
+                                f"CANDIDATE PROFILE:\n"
+                                f"- Name: {resume_data.get('name', 'Applicant')}\n"
+                                f"- University: {resume_data.get('university', 'Not Specified')}\n"
+                                f"- Skills: {skills_list}\n\n"
+                                f"JOB CONTEXT: {st.session_state.get('current_job_desc', 'General Career Advice')}\n\n"
+                                f"USER QUESTION: {prompt}"
                             )
 
+                            # 5. VERTEX AI GENERATION
+                            # We use 'model' defined at the top of modules.py via vertexai.init
                             response = model.generate_content(full_prompt)
                             ai_response = response.text
                             
-                            # Overwrite white text and display black so all the response text is visible
-                            st.markdown(f'<div style="color: black !important;">{ai_response}</div>', unsafe_allow_html=True)
+                            # Display AI response in the UI
+                            st.markdown(ai_response)
                     
+                    # 6. SAVE INTERACTION BACK TO BIGQUERY
+                    # This closes the loop: Data -> AI -> Data Storage
+                    save_chat_session(
+                        user_id=user_id,
+                        resume_id=resume_id,
+                        job_id=job_id,
+                        user_prompt=prompt,
+                        ai_response=ai_response
+                    )
+
+                    # Update local session state so the message stays on screen after rerun
                     st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 
                 except Exception as e:
                     st.error(f"AI error occurred: {e}")
-                    print(f"DEBUG: {str(e)}")
+                    print(f"DEBUG ERROR: {str(e)}")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 
