@@ -53,16 +53,6 @@ users = {
 }
 
 
-def get_user_profile(user_id):
-    """Returns information about the given user.
-
-    This function currently returns random data. You will re-write it in Unit 3.
-    """
-    if user_id not in users:
-        raise ValueError(f'User {user_id} not found.')
-    return users[user_id]
-
-
 def get_user_posts(user_id):
     """Returns a list of a user's posts.
 
