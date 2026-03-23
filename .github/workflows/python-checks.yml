@@ -50,9 +50,14 @@ jobs:
         mkdir -p .streamlit
         echo '[secrets]' > .streamlit/secrets.toml
         echo 'GEMINI_API_KEY = "${{ secrets.GEMINI_API_KEY }}"' >> .streamlit/secrets.toml
+    - name: Authenticate to Google Cloud
+      shell: bash
+      run: |
+        # This takes the secret you just made and writes it to a temporary file
+        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > "${{ github.workspace }}/gcloud-key.json"
         
+        # This tells the system where that file is
+        echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/gcloud-key.json" >> $GITHUB_ENV
     - name: Test with pytest
-      env: #tells github to take secret api key and load it so streamlit can find it
-        GEMINI_API_KEY: ${{secrets.GEMINI_API_KEY }}
       run: |
         pytest modules_test.py

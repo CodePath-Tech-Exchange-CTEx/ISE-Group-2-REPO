@@ -168,11 +168,14 @@ class TestProfilePage(unittest.TestCase):
         # Verify it saved to session state
         self.assertEqual(self.at.session_state.user_resume, "Experience with Python and Streamlit")
 
+
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestResumeAndMatcherLogic(unittest.TestCase):
+    
     def setUp(self):
         """Initialize the app simulation."""
         self.at = AppTest.from_file("app.py").run()
+
     def test_uploader_clears_session_state(self):
         """Test if the cleanup logic removes current_resume when uploader is empty."""
         # Manually inject data to simulate an existing upload
@@ -186,19 +189,54 @@ class TestResumeAndMatcherLogic(unittest.TestCase):
                 "Logic failed to delete 'current_resume' when uploader was empty.")
 
     def test_matcher_disabled_state_ui(self):
-        """Test if the Matcher shows the warning when no resume exists."""
-        # Ensure the state is empty to trigger the 'disabled' UI branch
+        """Test if the Analyze button is disabled when no resume exists."""
+        # Ensure state is empty
         if 'current_resume' in self.at.session_state:
-                del self.at.session_state['current_resume']
+            del self.at.session_state['current_resume']
         self.at.run()
 
-        # Verify the specific button is disabled
-        self.assertTrue(self.at.button(key="disabled_match_btn").disabled)
+        # Target the SINGLE button key
+        analyze_btn = self.at.button(key="analyze_match_btn")
         
-        # Verify that the warning caption is visible to the user
-        warning_exists = any("Please upload a resume" in cap.value for cap in self.at.caption)
-        self.assertTrue(warning_exists)
+        # Assert it is disabled
+        self.assertTrue(analyze_btn.disabled)
+        self.assertTrue(any("Please upload a resume" in cap.value for cap in self.at.caption))
 
+    def test_matcher_enabled_state_ui(self):
+        """Test if the Analyze button is enabled when a resume is added."""
+
+        self.at.session_state['current_resume'] = "Mock Resume"
+        
+        self.at.run()
+
+        analyze_btn = self.at.button(key="analyze_match_btn")
+        
+        if 'current_resume' in self.at.session_state:
+            self.assertFalse(analyze_btn.disabled)
+
+    # test to see if there is an ouptut when a resume is added and the Analyze match score button is clicked.
+    def test_analyze_output(self):
+        self.at.session_state['current_resume'] = "Mock Resume"
+        self.at.run()
+        analyze_btn = self.at.button(key="analyze_match_btn")
+
+        analyze_btn.click().run()
+        matches_info = any("Matches found:" in i.value for i in self.at.info)
+        self.assertTrue(matches_info)
+    
+
+    # test to see if when the resume is deleted after it has been analyzed once that the analyze matchscore button become disabled again
+    def test_analyze_reset_after_resume_removed(self):
+        self.at.session_state['current_resume'] = "Mock Resume"
+        self.at.run()
+        if 'current_resume' in self.at.session_state:
+            del self.at.session_state['current_resume']
+        self.at.run()
+
+        analyze_btn = self.at.button(key="analyze_match_btn")
+        self.assertTrue(analyze_btn.disabled)
+        self.assertTrue(any("Please upload a resume" in cap.value for cap in self.at.caption))
+        
 
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestNavBar(unittest.TestCase):
@@ -260,7 +298,6 @@ class TestSearchIntegration(unittest.TestCase):
         
         # 5. Final Assertion
         self.assertIn("Google", rendered_content)
-
 
 if __name__ == "__main__":
     unittest.main()
