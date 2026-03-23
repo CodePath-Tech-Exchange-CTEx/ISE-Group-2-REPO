@@ -19,8 +19,10 @@ import pdfplumber
 PROJECT_ID = "oluwanifemi-elias-hu"
 LOCATION = "us-central1"
 
-vertexai.init(project=PROJECT_ID, location=LOCATION)
-model = GenerativeModel("gemini-2.0-flash")
+# do not use global initialization, move them into a helper
+def get_gemini_model():
+    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    return GenerativeModel("gemini-2.0-flash")
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -192,6 +194,9 @@ def GeminiChatbot(container):
                     
                     with st.chat_message("assistant"):
                         with st.spinner("Analyzing with Vertex AI..."):
+
+                            # Call funciton instead of using global method only access when needed
+                            model = get_gemini_model()
                             
                             # 4. CONSTRUCT THE STRUCTURED PROMPT (Prompt Engineering)
                             # We inject real data from BigQuery into the instructions

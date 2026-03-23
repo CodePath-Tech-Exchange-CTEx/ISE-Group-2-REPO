@@ -13,14 +13,19 @@ import random
 import requests
 from extractor import *
 from google.cloud import bigquery
-
-bq_client = bigquery.Client()
 from db_handler import insert_jobs_to_bigquery, get_jobs_from_bigquery
-
 from dotenv import load_dotenv
 import os
 
+
 load_dotenv()
+
+def get_bq_client():
+    """
+    Initializes the BigQuery client only when needed.
+    This prevents 'DefaultCredentialsError' during the import phase in testing environments.
+    """
+    return bigquery.Client()
 
 users = {
     'user1': {
@@ -174,7 +179,9 @@ def get_job_count_by_company(company_name: str) -> int:
         ]
     )
     try:
-        result = bq_client.query(query, job_config=job_config).result()
+        # Call the helper function instead of a global variable
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
         for row in result:
             return row.cnt
         return 0
@@ -205,7 +212,8 @@ def search_jobs(keyword: str) -> list[dict]:
         ]
     )
     try:
-        result = bq_client.query(query, job_config=job_config).result()
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
         return [dict(row) for row in result]
     except Exception as e:
         print(f"search_jobs error: {e}")
@@ -217,23 +225,31 @@ def get_jobs():
 
 def get_chat_context(user_id: str, job_id: str) -> list[dict]:
     """
-    Fetches all previous user_prompt and ai_response entries 
-    for a given user_ID and job_ID to provide memory to the chatbot.
+    Retrieves the history of a specific conversation to give the AI 'memory'.
+    Filters by user and job so the bot doesn't mix up different applications.
     """
+    # SQL Query: Grabs the prompts and responses in chronological order
     query = """
         SELECT user_prompt, ai_response
         FROM `kenneth-ye-fiu.ISE.chatbotTABLE`
         WHERE user_ID = @user_id AND job_ID = @job_id
         ORDER BY session_ID ASC
     """
+    
+    # Parametrization: This prevents 'SQL Injection' by safely passing variables
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
             bigquery.ScalarQueryParameter("job_id", "STRING", job_id),
         ]
     )
+    
     try:
-        result = bq_client.query(query, job_config=job_config).result()
+        # Lazy initialization: Client is only created when the function runs
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
+        
+        # Converts BigQuery Row objects into standard Python dictionaries for the app
         return [dict(row) for row in result]
     except Exception as e:
         print(f"get_chat_context error: {e}")
@@ -241,16 +257,15 @@ def get_chat_context(user_id: str, job_id: str) -> list[dict]:
 
 def save_chat_session(user_id: str, resume_id: str, job_id: str, user_prompt: str, ai_response: str):
     """
-    Inserts a new chat record into BigQuery. 
-    Fulfills the 'get_genai_data' requirement to update the DB using AI output.
+    Logs a new chat interaction into the database. 
+    This is critical for tracking user engagement and AI accuracy.
     """
-
-    #define the target tbale in project.dataset.table format
     table_id = "kenneth-ye-fiu.ISE.chatbotTABLE"
     
-    # Generating a unique ID for the session record
+    # Generate a unique ID for this specific message pair
     session_id = str(uuid.uuid4())
 
+    # Format the data into a list of JSON objects as required by BigQuery streaming
     rows_to_insert = [
         {
             "session_ID": session_id,
@@ -263,11 +278,14 @@ def save_chat_session(user_id: str, resume_id: str, job_id: str, user_prompt: st
     ]
 
     try:
-        # Use the JSON streaming API to push the data into BigQuery
-        errors = bq_client.insert_rows_json(table_id, rows_to_insert)
-        if errors == []: #if errors bigQuery returns a list of error objects
-            return True
+        client = get_bq_client()
+        # insert_rows_json is a 'Streaming Insert' - it's much faster than a standard SQL INSERT
+        errors = client.insert_rows_json(table_id, rows_to_insert)
+        
+        if errors == []:
+            return True # Success
         else:
+            # BigQuery returns a list of error objects if something went wrong (e.g., schema mismatch)
             print(f"Errors inserting chat session: {errors}")
             return False
     except Exception as e:
@@ -276,12 +294,11 @@ def save_chat_session(user_id: str, resume_id: str, job_id: str, user_prompt: st
 
 def get_resume_with_skills(resume_id: str) -> dict:
     """
-    Fetches the resume details and associated skills for comparison logic.
-    Uses a JOIN between Resumes, resumeSkill, and Skills tables.
+    Joins multiple tables to get a complete picture of a candidate.
+    Combines the 'Resumes' metadata with their list of skills.
     """
-
-    #array_agg takes multiple skill rows and turns them into a single list
-    
+    # SQL Query: Uses LEFT JOINs to ensure we get the resume even if skills are missing
+    # ARRAY_AGG(s.skill_name) turns multiple skill rows into a single Python list
     query = """
         SELECT 
             r.name, r.location, r.university,
@@ -292,20 +309,24 @@ def get_resume_with_skills(resume_id: str) -> dict:
         WHERE r.resume_ID = @resume_id
         GROUP BY r.name, r.location, r.university
     """
+    
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("resume_id", "STRING", resume_id)
         ]
     )
+    
     try:
-        result = bq_client.query(query, job_config=job_config).result()
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
+        
+        # result is an iterator; we only expect one resume per ID
         for row in result:
             return dict(row)
-        return {}
+        return {} # Return empty dict if ID doesn't exist
     except Exception as e:
         print(f"get_resume_with_skills error: {e}")
         return {}
-
 
 
 if __name__ == "__main__":
