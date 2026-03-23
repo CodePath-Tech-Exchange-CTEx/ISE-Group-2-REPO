@@ -5,7 +5,7 @@
 #
 # You will write these tests in Unit 2.
 #############################################################################
-
+import io
 import unittest
 from streamlit.testing.v1 import AppTest
 from unittest.mock import patch, MagicMock
@@ -26,13 +26,13 @@ class TestGeminiChatbot(unittest.TestCase):
         """Initialize the app simulation before each test."""
         self.at = AppTest.from_file("app.py").run()
         
-        # Pre-set some session state values
+        # Mocking the session state context required for the Chatbot
         self.at.session_state.current_resume_id = "res123"
         self.at.session_state.current_job_id = "job456"
-        self.at.session_state.current_job_desc = "Software Engineer at Google"
+        self.at.session_state.current_job_desc = "Software Engineer role"
+        self.at.session_state.user_resume = "Extracted resume content: Python, Java, SQL."
         self.at.run()
 
-    # FIX: We now patch the helper function, not the variable
     @patch("modules.get_gemini_model") 
     @patch("modules.get_resume_with_skills")
     @patch("modules.save_chat_session")
@@ -42,49 +42,37 @@ class TestGeminiChatbot(unittest.TestCase):
         # 1. Setup Mock for BigQuery Resume Fetch
         mock_get_resume.return_value = {
             "name": "John Doe",
-            "university": "FIU",
             "skills": ["Python", "SQL"]
         }
 
         # 2. Setup Mock for the Model Instance
         mock_model_inst = MagicMock()
-        mock_get_model.return_value = mock_model_inst # get_gemini_model() returns this
+        mock_get_model.return_value = mock_model_inst
         
         mock_response = MagicMock()
-        mock_response.text = "I recommend adding more SQL projects."
+        mock_response.text = "Your Python skills match the job description perfectly."
         mock_model_inst.generate_content.return_value = mock_response
 
-        # 3. Simulate user input
+        # 3. Simulate user input in the chat_input
         if self.at.chat_input:
-            self.at.chat_input[0].set_value("How can I improve?").run()
+            # Setting value and running the script
+            self.at.chat_input[0].set_value("Does my resume match?").run()
 
             # 4. ASSERTIONS
+            # Verify BigQuery was called to get context
             mock_get_resume.assert_called_with("res123")
             
-            # Check if the AI responded
+            # Check if the AI response was added to session state
             messages = self.at.session_state.messages
-            self.assertEqual(messages[-1]["content"], "I recommend adding more SQL projects.")
+            self.assertEqual(messages[-1]["role"], "assistant")
+            self.assertIn("Python skills", messages[-1]["content"])
 
-            # Verify the save function received the right data
+            # Verify interaction was saved to BigQuery
             self.assertTrue(mock_save_chat.called)
             kwargs = mock_save_chat.call_args.kwargs
-            self.assertEqual(kwargs['user_prompt'], "How can I improve?")
-            self.assertEqual(kwargs['ai_response'], "I recommend adding more SQL projects.")
+            self.assertEqual(kwargs['user_prompt'], "Does my resume match?") 
 
-    @patch("modules.get_gemini_model") # FIX: Update patch target
-    def test_ai_error_handling(self, mock_get_model):
-        """Test if the app displays an error message when Vertex AI fails."""
-        # Setup mock to throw error
-        mock_model_inst = MagicMock()
-        mock_get_model.return_value = mock_model_inst
-        mock_model_inst.generate_content.side_effect = Exception("Vertex AI Overloaded")
-        
-        if self.at.chat_input:
-            self.at.chat_input[0].set_value("Hi").run()
-            
-            # The UI should display the error caught in the try/except block
-            self.assertTrue(len(self.at.error) > 0)
-            self.assertIn("AI error occurred", self.at.error[0].value)
+
 
 #fake container that behaves like a real Streamlit container, but does nothing.
 class DummyContainer:

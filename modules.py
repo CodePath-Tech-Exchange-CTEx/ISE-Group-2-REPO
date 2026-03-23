@@ -16,13 +16,13 @@ from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_con
 import pdfplumber
 
 
-PROJECT_ID = "oluwanifemi-elias-hu"
+PROJECT_ID = "caleb-ligon-hu"   #TODO: Check if team can utilize the api with it being under my project
 LOCATION = "us-central1"
 
 # do not use global initialization, move them into a helper
 def get_gemini_model():
     vertexai.init(project=PROJECT_ID, location=LOCATION)
-    return GenerativeModel("gemini-2.0-flash")
+    return GenerativeModel("gemini-2.5-pro")
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -116,7 +116,10 @@ def NavBar():
 
 
 def GeminiChatbot(container):
-    # --- CSS STYLING ---
+    ############
+    # Main AI logic. It combines BigQuery metadata, extracted Resume text, and 
+    # the current job description to provide tailored advice
+    ################
     st.markdown(
         """
         <style>
@@ -192,22 +195,28 @@ def GeminiChatbot(container):
                     # Convert the list of skills from BigQuery into a readable string
                     skills_list = ", ".join(resume_data.get('skills', [])) if resume_data.get('skills') else "No skills listed."
                     
+                    # Get unstructured text extracted from the file (PDF/DOCX)
+                    full_resume_text = st.session_state.get('user_resume', 'No full resume text uploaded.')
+                    
+                    # Get the job description from Adzuna carousel
+                    job_desc = st.session_state.get('current_job_desc', 'General career advice context.')
+                    
                     with st.chat_message("assistant"):
                         with st.spinner("Analyzing with Vertex AI..."):
 
                             # Call funciton instead of using global method only access when needed
                             model = get_gemini_model()
                             
-                            # 4. CONSTRUCT THE STRUCTURED PROMPT (Prompt Engineering)
-                            # We inject real data from BigQuery into the instructions
+                            # 4. PROMPT ENGINEERING (Semantic Comparison)
+                            # We feed all three parts: Profile Metadata, Full Resume, and Job Description
                             full_prompt = (
-                                f"You are a professional career advisor.\n\n"
-                                f"CANDIDATE PROFILE:\n"
-                                f"- Name: {resume_data.get('name', 'Applicant')}\n"
-                                f"- University: {resume_data.get('university', 'Not Specified')}\n"
-                                f"- Skills: {skills_list}\n\n"
-                                f"JOB CONTEXT: {st.session_state.get('current_job_desc', 'General Career Advice')}\n\n"
-                                f"USER QUESTION: {prompt}"
+                                f"You are a professional career advisor and a friendly helpful hand in suggesting ways to improve skills, experiences, projects, etc.\n\n"
+                                f"CANDIDATE PROFILE:\n- Name: {resume_data.get('name', 'Applicant')}\n- Skills: {skills_list}\n\n"
+                                f"FULL RESUME TEXT:\n{full_resume_text}\n\n"
+                                f"TARGET JOB DESCRIPTION:\n{job_desc}\n\n"
+                                f"USER QUESTION: {prompt}\n\n"
+                                f"INSTRUCTIONS: If the user asks for help with their resume Compare the resume against the job description. "
+                                f" Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
                             )
 
                             # 5. VERTEX AI GENERATION
@@ -627,10 +636,17 @@ def ResumeUploader(container):
             label_visibility="collapsed"
         )
         if uploaded_file:
-            # Extract text so Gemini can read it later
-            extracted_text = extract_text_from_pdf(uploaded_file)
+            # Check file extension and extract text accordingly
+            if uploaded_file.name.lower().endswith('.pdf'):
+                extracted_text = extract_text_from_pdf(uploaded_file)
+            elif uploaded_file.name.lower().endswith('.docx'):
+                extracted_text = extract_text_from_docx(uploaded_file)
+            else:
+                extracted_text = ""
+
+            # Store the extracted text in session state for GeminiChatbot to use
             st.session_state['user_resume'] = extracted_text
-            st.session_state['current_resume'] = uploaded_file # For UI tracking
+            st.session_state['current_resume'] = uploaded_file 
             st.success("✅ File Ready & Processed!")
         else:
             if 'current_resume' in st.session_state:
@@ -701,32 +717,24 @@ def KeywordMatcher(container):
 
 
 
+
 def extract_text_from_pdf(pdf_file):
-    """
-    Parses an uploaded PDF file and concatenates text from all available pages.
-    
-    Args:
-        pdf_file (file-like object): The PDF file uploaded via Streamlit.
-        
-    Returns:
-        str: A single string containing the full text of the PDF, 
-             separated by newlines. Returns an empty string if extraction fails.
-    """
+    """ Uses pdfplumber to pull text from all PDF pages. """
     text = ""
     try:
-        # Open the PDF binary stream
         with pdfplumber.open(pdf_file) as pdf:
-            # Iterate through each page to ensure multi-page resumes are captured
             for page in pdf.pages:
                 page_text = page.extract_text()
-                
-                # Only append if the page actually contains extractable text
-                if page_text:
-                    text += page_text + "\n"
-                    
+                if page_text: text += page_text + "\n"
     except Exception as e:
-        # Log the specific error to the Streamlit UI for user feedback
-        st.error(f"Error reading PDF: {e}")
-        
+        st.error(f"PDF Error: {e}")
     return text
 
+def extract_text_from_docx(docx_file):
+    """ Uses python-docx to pull text from Word documents. """
+    try:
+        doc = docx.Document(docx_file)
+        return "\n".join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        st.error(f"DOCX Error: {e}")
+        return ""

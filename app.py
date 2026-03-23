@@ -99,19 +99,20 @@ if __name__ == '__main__':
         Render_Job(app_container, jobs_to_show)
         GeminiChatbot(app_container)
 
-        # with app_container.expander("🚀 Quick Match: Compare your Resume", expanded=True):
-        #     col1, col2 = st.columns(2)
-        ResumeUploader(app_container)
-        KeywordMatcher(app_container)
-        # st.divider()
-        # -----------------------------
+        st.divider()
+        col_left, col_right = app_container.columns(2)
+        with col_left:
+            ResumeUploader(st.container())
+        with col_right:
+            KeywordMatcher(st.container())
 
         # Render Profile Page
     elif st.session_state.page == "profile":
         ProfilePage(app_container)
-        #################################
 
-
+        with app_container:
+            st.divider()
+            KeywordMatcher(st.container())
     # Render nav bar outside main containe
 NavBar()
 
