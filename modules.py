@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from google import genai
 from db_handler import init_db, save_chat_log
-from data_fetcher import get_user_profile
+from data_fetcher import get_user_profile, get_user_resume
 import pdfplumber #used for PDF parsing
 try:
     # Use .get() to avoid crashing if the key is missing during tests
@@ -368,7 +368,17 @@ def ProfilePage(container):
         
         st.divider()
 
-        
+        # User Resumes Dropdown Menu
+        resumes = get_user_resume(1)
+        options = {
+            r_id: resumes[r_id]["FILENAME"]
+            for r_id in resumes
+        }
+
+        st.title("Resumes")
+        st.selectbox(label = "All submitted resumes", options = list(options.keys()), format_func=lambda x: options[x])
+
+        st.divider()
 
         # START CENTERED RESUME AREA (No border)
         st.markdown('<div class="resume-section">', unsafe_allow_html=True)
