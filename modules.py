@@ -11,7 +11,8 @@ from internals import create_component
 import streamlit as st
 import streamlit.components.v1 as components
 from google import genai
-from db_handler import init_db, save_chat_log 
+from db_handler import init_db, save_chat_log
+from data_fetcher import get_user_profile
 import pdfplumber #used for PDF parsing
 try:
     # Use .get() to avoid crashing if the key is missing during tests
@@ -326,9 +327,18 @@ def ProfilePage(container):
                 text-align: center;
             }
 
+            .st-key-profile_container span{
+                color: black;
+            
+            }
+
 
         </style>
     """, unsafe_allow_html=True)
+
+    user_info = get_user_profile(1)
+
+    container = st.container(key="profile_container")
 
     with container:
         st.title("User Profile")
@@ -338,9 +348,20 @@ def ProfilePage(container):
         with col1:
             st.markdown("<h1 style='font-size: 100px; margin: 0;'>👤</h1>", unsafe_allow_html=True)
         with col2:
-            st.subheader("John Doe")
-            st.write("**University:** Google Cloud Tech")
-            st.write("**Major:** Computer Science")
+            st.subheader(f"{user_info['first_name']} {user_info['last_name']}")
+            #st.write("**University:** Google Cloud Tech")
+            #st.write("**Major:** Computer Science")
+
+            # Stop email hyperlinking
+            email = user_info['email']
+            email = email.replace("@", "<span>@</span>") 
+            st.markdown(f"**Email:** {email}", unsafe_allow_html=True)
+
+            st.write(f"**Date created:** {user_info['date_created']}")
+            if user_info['is_verified']:
+                st.write(f"**Verified:** ✅")
+            else:
+                st.write(f"**Verified:** ❌")
         
         st.divider()
 
