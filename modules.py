@@ -47,9 +47,6 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
-
-
-
 ########## code change ##########
 def NavBar():
     st.markdown("""
@@ -121,26 +118,15 @@ def NavBar():
 
 
 
-
-# Hardcoded for school project deployment access
-try:
-    api_key = "AIzaSyAZLDqSgew3L06SORIc6s5ZyvseK2xLLy4" 
-    
-    client = genai.Client(
-        api_key=api_key,
-        http_options={'api_version': 'v1'}
-    )
-except Exception as e:
-    # Changed to a general Exception to catch any initialization issues
-    client = None
-    print(f"Gemini initialization failed: {e}")
-
 def GeminiChatbot(container):
-   st.markdown(
+    ############
+    # Main AI logic. It combines BigQuery metadata, extracted Resume text, and 
+    # the current job description to provide tailored advice
+    ################
+    st.markdown(
         """
         <style>
-
-       /* Existing Expander Styles... */
+        /* Expander as a "pop-up" drawer */
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
@@ -149,113 +135,124 @@ def GeminiChatbot(container):
             background-color: white !important;
         }
 
-        /* Force all chat text to be black regardless of theme */
+        /* Force chat text to be black for readability */
         [data-testid="stChatMessage"] div, 
         [data-testid="stChatMessage"] p, 
         [data-testid="stChatMessage"] li {
             color: black !important;
         }
 
-        /* Make the assistant bubble a light color so black text is easy to read */
+        /* Assistant bubble styling */
         [data-testid="stChatMessage"][data-testid="assistant"] {
             background-color: #f0f2f6 !important;
             border: 1px solid #ddd;
         }
         
-        /* Make the user bubble a different light color */
+        /* User bubble styling */
         [data-testid="stChatMessage"][data-testid="user"] {
             background-color: #e1f5fe !important;
             border: 1px solid #b3e5fc;
         }
 
-       
-        
         .stChatInput {
             border: 1px solid black !important;
             border-radius: 30px;
         }
-
         </style>
         """,
         unsafe_allow_html=True
-
-        
     )
-   with container:
 
+    with container:
         st.markdown('<div id="chatbot-section-wrapper">', unsafe_allow_html=True)
-        # Use an expander to act as a "pop-up" drawer
+        
         with st.expander("🔎 Ask AI Assistant", expanded=False):
             
-            # Chat history setup
+            # 1. IDENTIFY CONTEXT
+            # Pull IDs from session state (defaults provided if keys don't exist yet)
+            user_id = st.session_state.get('user_id', 'user1')
+            resume_id = st.session_state.get('current_resume_id', 'res01')
+            job_id = st.session_state.get('current_job_id', 'job01')
+
+            # Initialize local UI chat history so messages persist during the session
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
-            # Display previous messages
+            # Render existing messages from the current session
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
-            # Handle new user input
+            # 2. HANDLE NEW USER INPUT
             if prompt := st.chat_input("Ask how to improve your resume..."):
+                # Display user message immediately
                 with st.chat_message("user"):
                     st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
 
-                # 1. Define these BEFORE the try block so they are always available
-                resume_context = st.session_state.get('user_resume', 'No resume provided.')
-                job_context = st.session_state.get('current_job_desc', 'No job selected.')
-
-
-                # Attempt to generate a response from Gemini
                 try:
+                    # 3. FETCH BIGQUERY DATA FOR AI CONTEXT
+                    # Call the function from data_fetcher.py to get real DB data
+                    resume_data = get_resume_with_skills(resume_id)
+                    
+                    # Convert the list of skills from BigQuery into a readable string
+                    skills_list = ", ".join(resume_data.get('skills', [])) if resume_data.get('skills') else "No skills listed."
+                    
+                    # Get unstructured text extracted from the file (PDF)
+                    full_resume_text = st.session_state.get('user_resume', 'No full resume text uploaded.')
+                    
+                    # Get the job description from Adzuna carousel
+                    job_desc = st.session_state.get('current_job_desc', 'General career advice context.')
+                    
                     with st.chat_message("assistant"):
-                        with st.spinner("Thinking..."):
+                        with st.spinner("Analyzing with Vertex AI..."):
+
+                            # Call function instead of using global method only access when needed
+                            model = get_gemini_model()
                             
-                            comparison_prompt = (
-                                f"You are a professional career advisor. Analyze the following:\n\n"
-                                f"USER RESUME: {resume_context}\n\n"
-                                f"JOB DESCRIPTION: {job_context}\n\n"
+                            # 4. PROMPT ENGINEERING (Semantic Comparison)
+                            # We feed all three parts: Profile Metadata, Full Resume, and Job Description.
+                            # The structured 'CANDIDATE PROFILE' helps Gemini identify core strengths,
+                            # while the 'FULL RESUME TEXT' allows it to see details like work dates and projects.
+                            full_prompt = (
+                                f"You are a professional career advisor and a friendly helpful hand in suggesting ways to improve skills, experiences, projects, etc.\n\n"
+                                f"CANDIDATE PROFILE:\n- Name: {resume_data.get('name', 'Applicant')}\n- Skills: {skills_list}\n\n"
+                                f"FULL RESUME TEXT:\n{full_resume_text}\n\n"
+                                f"TARGET JOB DESCRIPTION:\n{job_desc}\n\n"
                                 f"USER QUESTION: {prompt}\n\n"
-                                f"Provide specific feedback on how the user can better align their resume to this job."
+                                f"INSTRUCTIONS: If the user asks for help with their resume Compare the resume against the job description. "
+                                f"Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
                             )
 
-                            response = client.models.generate_content(
-                                model="models/gemini-2.5-flash-lite",
-                                contents=f"Resume: {resume_context}\nJob: {job_context}\nUser Question: {prompt}"
-                            )
- 
+                            # 5. VERTEX AI GENERATION
+                            # We use 'model' defined at the top of modules.py via vertexai.init.
+                            # The response is generated based on the grounded data provided in the prompt.
+                            response = model.generate_content(full_prompt)
                             ai_response = response.text
-                            #FIX the reponse from being white text by overwriting streamlit theming
-                            st.markdown(f"""
-                                <div style="color: black !important;">
-                                    {ai_response}
-                                </div>
-                            """, unsafe_allow_html=True)
-
                             
+                            # Display AI response in the UI
                             st.markdown(ai_response)
                     
-                    # Store response in session history
-                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
-
-                    # Save the interaction to your SQL database
-                    save_chat_log(
-                        user_id=st.session_state.get('user_id', 'user1'), # Use actual logged-in ID if available
-                        resume_id=st.session_state.get('current_resume_id', 'RES-001'), # Pass the ID, not the text
-                        job_id=st.session_state.get('current_job_id', 'JOB-999'),       # Pass the ID, not the text
-                        prompt=prompt, 
-                        response=ai_response
+                    # 6. SAVE INTERACTION BACK TO BIGQUERY
+                    # This closes the loop: Data -> AI -> Data Storage.
+                    # We log the user's specific prompt and the AI's tailored response for future context retrieval.
+                    save_chat_session(
+                        user_id=user_id,
+                        resume_id=resume_id,
+                        job_id=job_id,
+                        user_prompt=prompt,
+                        ai_response=ai_response
                     )
+
+                    # Update local session state so the message stays on screen after rerun
+                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 
                 except Exception as e:
+                    # Catch authentication or API quota errors and display them safely to the user
                     st.error(f"AI error occurred: {e}")
-                    # Log the specific error for debugging if needed
-                    print(f"DEBUG: {str(e)}")
+                    print(f"DEBUG ERROR: {str(e)}")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-
 
 
 
@@ -413,7 +410,7 @@ def ProfilePage(container):
         _, input_col, _ = st.columns([1, 4, 1])
         with input_col:
             if st.session_state.resume_mode == "File":
-                uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload", label_visibility="collapsed")
+                uploaded_file = st.file_uploader("Upload PDF", type=["pdf"], key="resume_upload", label_visibility="collapsed")
                 
                 if uploaded_file:
                     with st.spinner("Extracting text from resume..."):
@@ -674,15 +671,20 @@ def ResumeUploader(container):
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 10px;'>Upload Resume</p>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload Resume", 
-            type=["pdf", "docx"], 
+            type=["pdf"], 
             key="home_resume_uploader",
             label_visibility="collapsed"
         )
         if uploaded_file:
-            # Extract text so Gemini can read it later
-            extracted_text = extract_text_from_pdf(uploaded_file)
+            # Check file extension and extract text (Removed DOCX logic)
+            if uploaded_file.name.lower().endswith('.pdf'):
+                extracted_text = extract_text_from_pdf(uploaded_file)
+            else:
+                extracted_text = ""
+
+            # Store the extracted text in session state for GeminiChatbot to use
             st.session_state['user_resume'] = extracted_text
-            st.session_state['current_resume'] = uploaded_file # For UI tracking
+            st.session_state['current_resume'] = uploaded_file 
             st.success("✅ File Ready & Processed!")
         else:
             if 'current_resume' in st.session_state:
@@ -749,31 +751,15 @@ def KeywordMatcher(container):
         if is_disabled:
             st.caption("⚠️ Please upload a resume to enable analysis.")
 
+
 def extract_text_from_pdf(pdf_file):
-    """
-    Parses an uploaded PDF file and concatenates text from all available pages.
-    
-    Args:
-        pdf_file (file-like object): The PDF file uploaded via Streamlit.
-        
-    Returns:
-        str: A single string containing the full text of the PDF, 
-             separated by newlines. Returns an empty string if extraction fails.
-    """
+    """ Uses pdfplumber to pull text from all PDF pages. """
     text = ""
     try:
-        # Open the PDF binary stream
         with pdfplumber.open(pdf_file) as pdf:
-            # Iterate through each page to ensure multi-page resumes are captured
             for page in pdf.pages:
                 page_text = page.extract_text()
-                
-                # Only append if the page actually contains extractable text
-                if page_text:
-                    text += page_text + "\n"
-                    
+                if page_text: text += page_text + "\n"
     except Exception as e:
-        # Log the specific error to the Streamlit UI for user feedback
-        st.error(f"Error reading PDF: {e}")
-        
+        st.error(f"PDF Error: {e}")
     return text

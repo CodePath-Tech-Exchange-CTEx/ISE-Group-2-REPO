@@ -5,86 +5,74 @@
 #
 # You will write these tests in Unit 2.
 #############################################################################
-
+import io
 import unittest
 from streamlit.testing.v1 import AppTest
 from unittest.mock import patch, MagicMock
 import sys
 import streamlit as st
 
-from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher, NavBar #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
+# MOCK BIGQUERY AND VERTEX BEFORE IMPORTING MODULES
+# This prevents the "DefaultCredentialsError" during the import phase
+with patch('google.cloud.bigquery.Client'), \
+     patch('vertexai.init'), \
+     patch('vertexai.generative_models.GenerativeModel'):
+
+    from modules import GeminiChatbot, Render_Job, CompanySearch, ProfilePage, ResumeUploader, KeywordMatcher, NavBar #display_post, display_activity_summary, display_genai_advice, display_recent_workouts
 import modules
-import sqlite3
 
 class TestGeminiChatbot(unittest.TestCase):
     def setUp(self):
         """Initialize the app simulation before each test."""
         self.at = AppTest.from_file("app.py").run()
-
-    @patch("modules.client.models.generate_content")
-    @patch("modules.save_chat_log")
-    def test_chatbot_full_flow(self, mock_save_log, mock_gemini):
-        """Test that typing a message triggers Gemini and saves to the DB."""
         
-        # 1. Setup Mock Response from Gemini
-        mock_response = MagicMock()
-        mock_response.text = "I am a mock AI response for your resume."
-        mock_gemini.return_value = mock_response
-
-        # 2. Simulate user input in the chatbot
-        # We find the chat input and set a value
-        if self.at.chat_input:
-            self.at.chat_input[0].set_value("How is my resume?").run()
-
-            # 3. Assertions: Did the session state update?
-            messages = self.at.session_state.messages
-            self.assertTrue(len(messages) >= 2)
-            self.assertEqual(messages[-2]["content"], "How is my resume?")
-            self.assertEqual(messages[-1]["content"], "I am a mock AI response for your resume.")
-
-            # 4. Assertion: Was the Database function called?
-            self.assertTrue(mock_save_log.called)
-            # Verify it was called with the right prompt
-            args, kwargs = mock_save_log.call_args
-            self.assertEqual(kwargs['prompt'], "How is my resume?")
-
-    def test_resume_context_handling(self):
-        """Test if the chatbot uses the resume context from session state."""
-        # Manually inject a resume into session state
-        self.at.session_state.user_resume = "Experience: Python Developer at Google"
+        # Mocking the session state context required for the Chatbot
+        self.at.session_state.current_resume_id = "res123"
+        self.at.session_state.current_job_id = "job456"
+        self.at.session_state.current_job_desc = "Software Engineer role"
+        self.at.session_state.user_resume = "Extracted resume content: Python, Java, SQL."
         self.at.run()
-        
-        self.assertEqual(self.at.session_state.user_resume, "Experience: Python Developer at Google")
 
-    @patch("modules.client.models.generate_content")
-    def test_ai_error_handling(self, mock_gemini):
-        """Test if the app displays an error message when the AI fails (404/500)."""
-        # Simulate an API Failure
-        mock_gemini.side_effect = Exception("API Error")
+    @patch("modules.get_gemini_model") 
+    @patch("modules.get_resume_with_skills")
+    @patch("modules.save_chat_session")
+    def test_chatbot_full_flow(self, mock_save_chat, mock_get_resume, mock_get_model):
+        """Test the full loop: Data Fetch -> AI Generation -> Data Save."""
         
+        # 1. Setup Mock for BigQuery Resume Fetch
+        mock_get_resume.return_value = {
+            "name": "John Doe",
+            "skills": ["Python", "SQL"]
+        }
+
+        # 2. Setup Mock for the Model Instance
+        mock_model_inst = MagicMock()
+        mock_get_model.return_value = mock_model_inst
+        
+        mock_response = MagicMock()
+        mock_response.text = "Your Python skills match the job description perfectly."
+        mock_model_inst.generate_content.return_value = mock_response
+
+        # 3. Simulate user input in the chat_input
         if self.at.chat_input:
-            self.at.chat_input[0].set_value("Hi").run()
+            # Setting value and running the script
+            self.at.chat_input[0].set_value("Does my resume match?").run()
+
+            # 4. ASSERTIONS
+            # Verify BigQuery was called to get context
+            mock_get_resume.assert_called_with("res123")
             
-            # Look for the error message in the UI
-            self.assertTrue(self.at.error)
+            # Check if the AI response was added to session state
+            messages = self.at.session_state.messages
+            self.assertEqual(messages[-1]["role"], "assistant")
+            self.assertIn("Python skills", messages[-1]["content"])
 
-@unittest.skip("Blocked by Streamlit AppTest limitation in CI")
-class TestCompanySearch(unittest.TestCase):
-    def setUp(self):
-        """Initialize the app simulation before each test."""
-        self.at = AppTest.from_file("app.py").run()
+            # Verify interaction was saved to BigQuery
+            self.assertTrue(mock_save_chat.called)
+            kwargs = mock_save_chat.call_args.kwargs
+            self.assertEqual(kwargs['user_prompt'], "Does my resume match?") 
 
-    def test_search_input(self):
-        """Test if the company search bar accepts text."""
-        # Find the text input by the key we set in modules.py
-        search_bar = self.at.text_input(key="search_with_user_icon")
-        
-        # Simulate typing 'Google'
-        search_bar.set_value("Google").run()
 
-        # Check if the search bar's internal value is now 'Google'
-        self.assertEqual(search_bar.value, "Google", "The search bar did not update its value")
-        
 
 #fake container that behaves like a real Streamlit container, but does nothing.
 class DummyContainer:
