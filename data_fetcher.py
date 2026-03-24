@@ -212,7 +212,7 @@ def search_jobs(keyword: str) -> list[dict]:
 
 def get_jobs():
     return get_jobs_from_bigquery()
-
+    
 def get_chat_context(user_id: str, job_id: str) -> list[dict]:
     """
     Retrieves the history of a specific conversation to give the AI 'memory'.
@@ -302,11 +302,9 @@ def get_resume_with_skills(resume_id: str) -> dict:
     
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("resume_id", "STRING", resume_id)
-        ]
-    )
-    
+            bigquery.ScalarQueryParameter("resume_id", "STRING", resume_id)])
     try:
+
         client = get_bq_client()
         result = client.query(query, job_config=job_config).result()
         
@@ -408,6 +406,126 @@ def get_user_resume(user_id: str) -> dict:
         resume[f"{row.resume_ID}"] = {"Name": row.Name, "user_ID": row.user_ID, "FILENAME": row.FILENAME, "location": row.location, "university": row.university}
     return resume
 
+
+def filter_jobs_by_job_type(job_type):
+    query = """
+        SELECT *
+        FROM `kenneth-ye-fiu.ISE.JobInformation`
+        WHERE
+        job_type = @job_type  
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("job_type", "STRING", job_type)
+        ]
+    )
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        return [dict(row) for row in query_job]
+
+    except Exception as e:
+        print(f"filter_jobs_by_job_type error: {e}")
+        return []
+
+        
+def filter_jobs_by_location(location):
+    query = """
+        SELECT *
+        FROM `kenneth-ye-fiu.ISE.JobInformation`
+        WHERE
+        location = @location  
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("location", "STRING", location)
+        ]
+    )
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        return [dict(row) for row in query_job]
+
+    except Exception as e:
+        print(f"filter_jobs_by_location error: {e}")
+        return []
+
+
+def filter_jobs_by_skill_name(skill_name):
+    query = """
+        SELECT t1.*
+        FROM `kenneth-ye-fiu.ISE.JobInformation` AS t1
+        INNER JOIN `kenneth-ye-fiu.ISE.jobSkillsTable` AS t2
+        ON t1.job_ID = t2.job_ID
+        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t3
+        ON t2.skill_ID = t3.skill_ID
+        WHERE t3.skill_name = @skill_name
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("skill_name", "STRING", skill_name)
+        ]
+    )
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        return [dict(row) for row in query_job]
+
+    except Exception as e:
+        print(f"filter_jobs_by_skill_name error: {e}")
+        return []
+
+def get_resume_skills(resume_id):
+    query = """
+        SELECT t1.resume_ID, t2.skill_name
+        FROM `kenneth-ye-fiu.ISE.resumeSkill` AS t1
+        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t2
+        ON t1.skill_ID = t2.skill_ID
+        WHERE t1.resume_ID = @resume_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("resume_id", "STRING", resume_id) 
+        ]
+    )
+    
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        return [dict(row) for row in query_job]
+    except Exception as e:
+        print(f"get_resume_skills error: {e}")
+        return []
+    
+
+def get_project_with_skills(resume_id):
+    query = """
+        SELECT DISTINCT 
+            t1.project_title, 
+            t1.project_start_date, 
+            t3.skill_name
+        FROM `kenneth-ye-fiu.ISE.project_info` AS t1
+        INNER JOIN `kenneth-ye-fiu.ISE.projectSkillsTable` AS t2 
+            ON t1.project_ID = t2.project_ID
+        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t3
+            ON t2.skill_ID = t3.skill_ID
+        WHERE t1.resume_ID = @resume_id
+        ORDER BY t1.project_start_date DESC;
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("resume_id", "STRING", str(resume_id))
+        ]
+    )
+
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        return [dict(row) for row in query_job]
+        
+    except Exception as e:
+        print(f"Error fetching project skills: {e}")
+        return []
+
 if __name__ == "__main__":
-    # This allows the script to be run directly to populate the database 
     fetch_and_save_jobs()
+
+  
+
