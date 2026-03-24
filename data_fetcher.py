@@ -320,8 +320,11 @@ def get_resume_with_skills(resume_id: str) -> dict:
 
 def get_user_profile(user_id: str) -> list:
 
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
+    # PROJECT_ID = os.getenv("PROJECT_ID")
+    # DATABASE_ID = os.getenv("DATABASE_ID")
+    # Use Kenneth dataset until femi's gets set up
+    PROJECT_ID = "kenneth-ye-fiu"
+    DATABASE_ID = "ISE"
 
     # Check for database validity
     if not PROJECT_ID or not DATABASE_ID:
@@ -358,8 +361,11 @@ def get_user_profile(user_id: str) -> list:
     return user
 
 def get_user_resume(user_id: str) -> dict:
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
+    # PROJECT_ID = os.getenv("PROJECT_ID")
+    # DATABASE_ID = os.getenv("DATABASE_ID")
+    # Use Kenneth dataset until femi's gets set up
+    PROJECT_ID = "kenneth-ye-fiu"
+    DATABASE_ID = "ISE"
 
     # Check for database validity
     if not PROJECT_ID or not DATABASE_ID:

@@ -374,7 +374,10 @@ def ProfilePage(container):
         }
 
         st.title("Resumes")
-        st.selectbox(label = "All submitted resumes", options = list(options.keys()), format_func=lambda x: options[x])
+        if options:
+            st.selectbox(label="All submitted resumes", options=list(options.keys()), format_func=lambda x: options[x])
+        else:
+            st.write("No resumes found.")
 
         st.divider()
 
