@@ -7,19 +7,25 @@
 # data returned in the meantime. We will replace this file with other data when
 # testing earlier units.
 #############################################################################
-
+import datetime
+import uuid
 import random
 import requests
 from extractor import *
 from google.cloud import bigquery
-
-bq_client = bigquery.Client()
 from db_handler import insert_jobs_to_bigquery, get_jobs_from_bigquery
-
 from dotenv import load_dotenv
 import os
 
+
 load_dotenv()
+
+def get_bq_client():
+    """
+    Initializes the BigQuery client only when needed.
+    This prevents 'DefaultCredentialsError' during the import phase in testing environments.
+    """
+    return bigquery.Client()
 
 users = {
     'user1': {
@@ -69,29 +75,6 @@ def get_user_posts(user_id):
         'content': content,
         'image': 'image_url',
     }]
-
-
-def get_genai_advice(user_id):
-    """Returns the most recent advice from the genai model.
-
-    This function currently returns random data. You will re-write it in Unit 3.
-    """
-    advice = random.choice([
-        'Your heart rate indicates you can push yourself further. You got this!',
-        "You're doing great! Keep up the good work.",
-        'You worked hard yesterday, take it easy today.',
-        'You have burned 100 calories so far today!',
-    ])
-    image = random.choice([
-        'https://plus.unsplash.com/premium_photo-1669048780129-051d670fa2d1?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        None,
-    ])
-    return {
-        'advice_id': 'advice1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': advice,
-        'image': image,
-    }
 
 
 
@@ -186,7 +169,9 @@ def get_job_count_by_company(company_name: str) -> int:
         ]
     )
     try:
-        result = bq_client.query(query, job_config=job_config).result()
+        # Call the helper function instead of a global variable
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
         for row in result:
             return row.cnt
         return 0
@@ -217,7 +202,8 @@ def search_jobs(keyword: str) -> list[dict]:
         ]
     )
     try:
-        result = bq_client.query(query, job_config=job_config).result()
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
         return [dict(row) for row in result]
     except Exception as e:
         print(f"search_jobs error: {e}")
@@ -226,6 +212,111 @@ def search_jobs(keyword: str) -> list[dict]:
 
 def get_jobs():
     return get_jobs_from_bigquery()
+
+def get_chat_context(user_id: str, job_id: str) -> list[dict]:
+    """
+    Retrieves the history of a specific conversation to give the AI 'memory'.
+    Filters by user and job so the bot doesn't mix up different applications.
+    """
+    # SQL Query: Grabs the prompts and responses in chronological order
+    query = """
+        SELECT user_prompt, ai_response
+        FROM `kenneth-ye-fiu.ISE.chatbotTABLE`
+        WHERE user_ID = @user_id AND job_ID = @job_id
+        ORDER BY session_ID ASC
+    """
+    
+    # Parametrization: This prevents 'SQL Injection' by safely passing variables
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
+            bigquery.ScalarQueryParameter("job_id", "STRING", job_id),
+        ]
+    )
+    
+    try:
+        # Lazy initialization: Client is only created when the function runs
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
+        
+        # Converts BigQuery Row objects into standard Python dictionaries for the app
+        return [dict(row) for row in result]
+    except Exception as e:
+        print(f"get_chat_context error: {e}")
+        return []
+
+def save_chat_session(user_id: str, resume_id: str, job_id: str, user_prompt: str, ai_response: str):
+    """
+    Logs a new chat interaction into the database. 
+    This is critical for tracking user engagement and AI accuracy.
+    """
+    table_id = "kenneth-ye-fiu.ISE.chatbotTABLE"
+    
+    # Generate a unique ID for this specific message pair
+    session_id = str(uuid.uuid4())
+
+    # Format the data into a list of JSON objects as required by BigQuery streaming
+    rows_to_insert = [
+        {
+            "session_ID": session_id,
+            "user_prompt": user_prompt,
+            "ai_response": ai_response,
+            "user_ID": user_id,
+            "resume_ID": resume_id,
+            "job_ID": job_id
+        }
+    ]
+
+    try:
+        client = get_bq_client()
+        # insert_rows_json is a 'Streaming Insert' - it's much faster than a standard SQL INSERT
+        errors = client.insert_rows_json(table_id, rows_to_insert)
+        
+        if errors == []:
+            return True # Success
+        else:
+            # BigQuery returns a list of error objects if something went wrong (e.g., schema mismatch)
+            print(f"Errors inserting chat session: {errors}")
+            return False
+    except Exception as e:
+        print(f"save_chat_session error: {e}")
+        return False
+
+def get_resume_with_skills(resume_id: str) -> dict:
+    """
+    Joins multiple tables to get a complete picture of a candidate.
+    Combines the 'Resumes' metadata with their list of skills.
+    """
+    # SQL Query: Uses LEFT JOINs to ensure we get the resume even if skills are missing
+    # ARRAY_AGG(s.skill_name) turns multiple skill rows into a single Python list
+    query = """
+        SELECT 
+            r.name, r.location, r.university,
+            ARRAY_AGG(s.skill_name IGNORE NULLS) AS skills
+        FROM `kenneth-ye-fiu.ISE.Resumes` r
+        LEFT JOIN `kenneth-ye-fiu.ISE.resumeSkill` rs ON r.resume_ID = rs.resume_ID
+        LEFT JOIN `kenneth-ye-fiu.ISE.Skills` s ON rs.skill_ID = s.skill_ID
+        WHERE r.resume_ID = @resume_id
+        GROUP BY r.name, r.location, r.university
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("resume_id", "STRING", resume_id)
+        ]
+    )
+    
+    try:
+        client = get_bq_client()
+        result = client.query(query, job_config=job_config).result()
+        
+        # result is an iterator; we only expect one resume per ID
+        for row in result:
+            return dict(row)
+        return {} # Return empty dict if ID doesn't exist
+    except Exception as e:
+        print(f"get_resume_with_skills error: {e}")
+        return {}
 
 def get_user_profile(user_id: str) -> list:
 

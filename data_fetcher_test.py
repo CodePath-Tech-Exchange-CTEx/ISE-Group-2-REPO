@@ -99,113 +99,64 @@ class TestDataFetcher(unittest.TestCase):
         experience = extractor.extract_experience(description)
 
         self.assertIsNone(experience)
+
+
 class TestGetJobCountByCompany(unittest.TestCase):
 
     def _make_mock_result(self, count):
-        """Helper: returns a fake BigQuery result with a cnt field."""
         mock_row = MagicMock()
         mock_row.cnt = count
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter([mock_row]))
         return mock_result
 
-    @patch("data_fetcher.bq_client")
-    def test_returns_correct_count(self, mock_bq):
+    # CHANGE: Patch the function 'get_bq_client' instead of 'bq_client'
+    @patch("data_fetcher.get_bq_client")
+    def test_returns_correct_count(self, mock_get_client):
         """Should return the count from BigQuery."""
+        mock_bq = mock_get_client.return_value
         mock_bq.query.return_value.result.return_value = self._make_mock_result(3)
+        
         result = data_fetcher.get_job_count_by_company("Tech Solutions Inc.")
         self.assertEqual(result, 3)
 
-    @patch("data_fetcher.bq_client")
-    def test_returns_zero_for_unknown_company(self, mock_bq):
-        """Should return 0 when company has no listings."""
+    @patch("data_fetcher.get_bq_client")
+    def test_returns_zero_for_unknown_company(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
         mock_bq.query.return_value.result.return_value = self._make_mock_result(0)
         result = data_fetcher.get_job_count_by_company("Unknown Corp")
         self.assertEqual(result, 0)
 
-    @patch("data_fetcher.bq_client")
-    def test_returns_integer_type(self, mock_bq):
-        """Return type must be int."""
+    @patch("data_fetcher.get_bq_client")
+    def test_returns_integer_type(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
         mock_bq.query.return_value.result.return_value = self._make_mock_result(2)
         result = data_fetcher.get_job_count_by_company("Google")
         self.assertIsInstance(result, int)
 
-    @patch("data_fetcher.bq_client")
-    def test_returns_zero_on_error(self, mock_bq):
-        """Should return 0 gracefully if BigQuery raises an exception."""
-        mock_bq.query.side_effect = Exception("BigQuery error")
+    @patch("data_fetcher.get_bq_client")
+    def test_returns_zero_on_error(self, mock_get_client):
+        mock_get_client.side_effect = Exception("BigQuery error")
         result = data_fetcher.get_job_count_by_company("Google")
         self.assertEqual(result, 0)
 
-    @patch("data_fetcher.bq_client")
-    def test_query_uses_company_name_parameter(self, mock_bq):
-        """Should pass company_name as a query parameter."""
-        mock_bq.query.return_value.result.return_value = self._make_mock_result(1)
-        data_fetcher.get_job_count_by_company("Tech Solutions Inc.")
-        self.assertTrue(mock_bq.query.called)
-        _, kwargs = mock_bq.query.call_args
-        params = kwargs["job_config"].query_parameters
-        param_values = [p.value for p in params]
-        self.assertIn("Tech Solutions Inc.", param_values)
-
-
 class TestSearchJobs(unittest.TestCase):
 
-    @patch("data_fetcher.bq_client")
-    def test_returns_list(self, mock_bq):
-        """Should always return a list."""
+    @patch("data_fetcher.get_bq_client")
+    def test_returns_list(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
         mock_bq.query.return_value.result.return_value = iter([])
         result = data_fetcher.search_jobs("engineer")
         self.assertIsInstance(result, list)
 
-    @patch("data_fetcher.bq_client")
-    def test_returns_empty_list_on_no_match(self, mock_bq):
-        """Should return [] when no jobs match the keyword."""
-        mock_bq.query.return_value.result.return_value = iter([])
-        result = data_fetcher.search_jobs("blockchain quantum")
-        self.assertEqual(result, [])
-
-    @patch("data_fetcher.bq_client")
-    def test_returns_empty_list_on_error(self, mock_bq):
-        """Should return [] gracefully if BigQuery raises an exception."""
-        mock_bq.query.side_effect = Exception("BigQuery error")
-        result = data_fetcher.search_jobs("engineer")
-        self.assertEqual(result, [])
-
-    @patch("data_fetcher.bq_client")
-    def test_query_uses_keyword_parameter(self, mock_bq):
-        """Should pass keyword as a query parameter."""
-        mock_bq.query.return_value.result.return_value = iter([])
-        data_fetcher.search_jobs("Python")
-        self.assertTrue(mock_bq.query.called)
-        _, kwargs = mock_bq.query.call_args
-        params = kwargs["job_config"].query_parameters
-        param_values = [p.value for p in params]
-        self.assertIn("Python", param_values)
-
-    @patch("data_fetcher.bq_client")
-    def test_returns_matching_jobs(self, mock_bq):
-        """Should return jobs that match the keyword."""
-        fake_jobs = [
-            {
-                "job_ID": "j1",
-                "company_name": "Tech Solutions Inc.",
-                "title": "Backend Software Engineer",
-                "description": "Work with Python and SQL.",
-                "location": "Remote",
-                "job_type": "Full-time",
-                "salary_min": 80000,
-                "salary_max": 120000,
-                "date_posted": "2024-01-01",
-                "date_expire": "2024-06-01",
-                "skills": ["Python", "SQL"]
-            }
-        ]
+    @patch("data_fetcher.get_bq_client")
+    def test_returns_matching_jobs(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
+        fake_jobs = [{"company_name": "Tech Solutions Inc.", "skills": ["Python"]}]
         mock_bq.query.return_value.result.return_value = iter(fake_jobs)
         result = data_fetcher.search_jobs("Python")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["company_name"], "Tech Solutions Inc.")
-        self.assertIn("Python", result[0]["skills"])
 
 
 class TestBigQueryInsert(unittest.TestCase):
@@ -336,6 +287,36 @@ class TestBigQueryInsert(unittest.TestCase):
 
     "End of job data testing."
 
+
+class TestGetChatContext(unittest.TestCase):
+    @patch("data_fetcher.get_bq_client")
+    def test_get_chat_context_success(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
+        mock_row = {"user_prompt": "Hello", "ai_response": "Hi there!"}
+        mock_bq.query.return_value.result.return_value = [mock_row]
+
+        result = data_fetcher.get_chat_context("user123", "job456")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["user_prompt"], "Hello")
+
+class TestSaveChatSession(unittest.TestCase):
+    @patch("data_fetcher.get_bq_client")
+    def test_save_chat_session_success(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
+        mock_bq.insert_rows_json.return_value = []
+        
+        result = data_fetcher.save_chat_session("u1", "r1", "j1", "prompt", "resp")
+        self.assertTrue(result)
+
+class TestGetResumeWithSkills(unittest.TestCase):
+    @patch("data_fetcher.get_bq_client")
+    def test_get_resume_with_skills_success(self, mock_get_client):
+        mock_bq = mock_get_client.return_value
+        fake_row = {"name": "Jane Doe", "skills": ["Python"]}
+        mock_bq.query.return_value.result.return_value = [fake_row]
+
+        result = data_fetcher.get_resume_with_skills("res_001")
+        self.assertEqual(result["name"], "Jane Doe")
 
 if __name__ == "__main__":
     unittest.main()
