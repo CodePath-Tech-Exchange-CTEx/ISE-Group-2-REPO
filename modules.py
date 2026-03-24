@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
-from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume
 import pdfplumber
 
 
