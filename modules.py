@@ -93,6 +93,8 @@ def NavBar():
     .st-key-nav_container .stVerticalBlock {
         display: flex;
         justify-content: space-around;
+        align-items: center;
+        width: 100%;
     }
 
     </style>
@@ -105,16 +107,17 @@ def NavBar():
         col1, col2, col3 = st.columns([1, 1, 1], vertical_alignment="center", gap="small")
 
         with col1:
-            st.button("⚙️", key="nav_settings_btn")
-
-        with col2:
             if st.button("🏠", key="nav_home_btn"):
                 st.session_state.page = "home"
                 st.rerun()
-        with col3: 
+
+        with col2:
             if st.button("👤", key="nav_profile_btn"):
                 st.session_state.page = "profile"
                 st.rerun()
+
+        with col3: 
+            st.button("⚙️", key="nav_settings_btn")
 
 
 
@@ -364,6 +367,8 @@ def ProfilePage(container):
                 st.write(f"**Verified:** ❌")
         
         st.divider()
+
+        
 
         # START CENTERED RESUME AREA (No border)
         st.markdown('<div class="resume-section">', unsafe_allow_html=True)
