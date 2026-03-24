@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
-from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume
 import pdfplumber
 
 
@@ -328,9 +328,18 @@ def ProfilePage(container):
                 text-align: center;
             }
 
+            .st-key-profile_container span{
+                color: black;
+            
+            }
+
 
         </style>
     """, unsafe_allow_html=True)
+
+    user_info = get_user_profile(1)
+
+    container = st.container(key="profile_container")
 
     with container:
         st.title("User Profile")
@@ -340,10 +349,33 @@ def ProfilePage(container):
         with col1:
             st.markdown("<h1 style='font-size: 100px; margin: 0;'>👤</h1>", unsafe_allow_html=True)
         with col2:
-            st.subheader("John Doe")
-            st.write("**University:** Google Cloud Tech")
-            st.write("**Major:** Computer Science")
+            st.subheader(f"{user_info['first_name']} {user_info['last_name']}")
+            #st.write("**University:** Google Cloud Tech")
+            #st.write("**Major:** Computer Science")
+
+            # Stop email hyperlinking
+            email = user_info['email']
+            email = email.replace("@", "<span>@</span>") 
+            st.markdown(f"**Email:** {email}", unsafe_allow_html=True)
+
+            st.write(f"**Date created:** {user_info['date_created']}")
+            if user_info['is_verified']:
+                st.write(f"**Verified:** ✅")
+            else:
+                st.write(f"**Verified:** ❌")
         
+        st.divider()
+
+        # User Resumes Dropdown Menu
+        resumes = get_user_resume(1)
+        options = {
+            r_id: resumes[r_id]["FILENAME"]
+            for r_id in resumes
+        }
+
+        st.title("Resumes")
+        st.selectbox(label = "All submitted resumes", options = list(options.keys()), format_func=lambda x: options[x])
+
         st.divider()
 
         # START CENTERED RESUME AREA (No border)
