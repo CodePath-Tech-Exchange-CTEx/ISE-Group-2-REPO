@@ -102,7 +102,6 @@ class TestDataFetcher(unittest.TestCase):
 
 
 class TestGetJobCountByCompany(unittest.TestCase):
-
     def _make_mock_result(self, count):
         mock_row = MagicMock()
         mock_row.cnt = count
@@ -287,7 +286,6 @@ class TestBigQueryInsert(unittest.TestCase):
 
     "End of job data testing."
 
-
 class TestGetChatContext(unittest.TestCase):
     @patch("data_fetcher.get_bq_client")
     def test_get_chat_context_success(self, mock_get_client):
@@ -317,6 +315,91 @@ class TestGetResumeWithSkills(unittest.TestCase):
 
         result = data_fetcher.get_resume_with_skills("res_001")
         self.assertEqual(result["name"], "Jane Doe")
+
+class TestDataFilter(unittest.TestCase):
+
+    # --- Tests for filter_jobs_by_location ---
+    @patch("data_fetcher.bq_client")
+    def test_filter_jobs_by_location_success(self, mock_bq):
+        """Should return a list of job dictionaries for a valid location."""
+        fake_jobs = [{'job_ID': 'J004', 'title': 'DevOps Engineer', 'location': 'Austin, TX'}]
+        # Mocking the iterable return of the query
+        mock_bq.query.return_value = iter(fake_jobs)
+        
+        result = data_fetcher.filter_jobs_by_location('Austin, TX')
+        
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['location'], 'Austin, TX')
+
+    # --- Tests for filter_jobs_by_skill_name ---
+    @patch("data_fetcher.bq_client")
+    def test_filter_jobs_by_skill_name_params(self, mock_bq):
+        """Verify the skill_name is correctly passed as a parameter."""
+        mock_bq.query.return_value = iter([])
+        data_fetcher.filter_jobs_by_skill_name("Python")
+        
+        self.assertTrue(mock_bq.query.called)
+        _, kwargs = mock_bq.query.call_args
+        params = kwargs["job_config"].query_parameters
+        # Check if "Python" was the value passed to the @skill_name parameter
+        self.assertEqual(params[0].value, "Python")
+
+    # --- Tests for get_resume_skills ---
+    @patch("data_fetcher.bq_client")
+    def test_get_resume_skills_returns_list(self, mock_bq):
+        """Should return exactly the skills linked to the resume_ID."""
+        fake_skills = [
+            {'resume_ID': '1', 'skill_name': 'Kubernetes'},
+            {'resume_ID': '1', 'skill_name': 'Python'}
+        ]
+        mock_bq.query.return_value = iter(fake_skills)
+        
+        result = data_fetcher.get_resume_skills('1')
+        
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[1]['skill_name'], 'Python')
+
+    # --- Tests for get_project_with_skills ---
+    @patch("data_fetcher.bq_client")
+    def test_get_project_with_skills_structure(self, mock_bq):
+        """Should return project titles and their associated skill names."""
+        fake_projects = [{
+            'project_title': 'Project B', 
+            'skill_name': 'RESTful APIs', 
+            'resume_ID': '102'
+        }]
+        mock_bq.query.return_value = iter(fake_projects)
+        
+        result = data_fetcher.get_project_with_skills('102')
+        
+        self.assertEqual(result[0]['project_title'], 'Project B')
+        self.assertIn('skill_name', result[0])
+
+    # --- General Error Handling Test ---
+    @patch("data_fetcher.bq_client")
+    def test_all_functions_return_empty_on_error(self, mock_bq):
+        """Verify catch-all error handling across data fetching functions."""
+        mock_bq.query.side_effect = Exception("BigQuery connection timeout")
+
+        self.assertEqual(data_fetcher.filter_jobs_by_location('fakelocation'), [])
+        self.assertEqual(data_fetcher.filter_jobs_by_job_type('faketype'), [])
+        self.assertEqual(data_fetcher.filter_jobs_by_skill_name('fakeskill'), [])
+        self.assertEqual(data_fetcher.get_resume_skills('-1'), [])
+        self.assertEqual(data_fetcher.get_project_with_skills('-1'), [])
+
+    @patch("data_fetcher.bq_client")
+    def test_all_functions_return_list_type(self, mock_bq):
+        # 1. Mock a standard successful return
+        mock_bq.query.return_value = iter([{'sample': 'data'}])
+        
+        # Test each function for list type on success
+        self.assertIsInstance(data_fetcher.filter_jobs_by_location("fakelocation"), list, "Location filter must return a list.")
+        self.assertIsInstance(data_fetcher.filter_jobs_by_job_type("faketype"), list, "Location filter must return a list.")
+        self.assertIsInstance(data_fetcher.filter_jobs_by_skill_name("fakeskill"), list, "Location filter must return a list.")
+        self.assertIsInstance(data_fetcher.get_resume_skills("102"), list, "Resume skills must return a list.")
+        self.assertIsInstance(data_fetcher.get_project_with_skills("102"), list, "Project skills must return a list.")
+            
 
 if __name__ == "__main__":
     unittest.main()
