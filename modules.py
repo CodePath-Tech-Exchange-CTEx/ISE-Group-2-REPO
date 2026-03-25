@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
-from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score
 import pdfplumber
 
 
@@ -689,6 +689,9 @@ def ResumeUploader(container):
             # Store the extracted text in session state for GeminiChatbot to use
             st.session_state['user_resume'] = extracted_text
             st.session_state['current_resume'] = uploaded_file 
+
+            # add the section that processes reumen
+
             st.success("✅ File Ready & Processed!")
         else:
             if 'current_resume' in st.session_state:
@@ -742,6 +745,7 @@ def KeywordMatcher(container):
                 import time
                 time.sleep(1.5) 
                 
+                # score = get_match_score(resume_id, job_id)
                 score = 78
                 st.markdown(f"""
                     <div class="match-card">

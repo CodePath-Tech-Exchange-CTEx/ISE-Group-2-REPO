@@ -20,6 +20,8 @@ import os
 
 load_dotenv()
 
+bq_client = bigquery.Client()
+
 def get_bq_client():
     """
     Initializes the BigQuery client only when needed.
@@ -27,54 +29,54 @@ def get_bq_client():
     """
     return bigquery.Client()
 
-users = {
-    'user1': {
-        'full_name': 'Remi',
-        'username': 'remi_the_rems',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user2', 'user3', 'user4'],
-    },
-    'user2': {
-        'full_name': 'Blake',
-        'username': 'blake',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user1'],
-    },
-    'user3': {
-        'full_name': 'Jordan',
-        'username': 'jordanjordanjordan',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user1', 'user4'],
-    },
-    'user4': {
-        'full_name': 'Gemmy',
-        'username': 'gems',
-        'date_of_birth': '1990-01-01',
-        'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
-        'friends': ['user1', 'user3'],
-    },
-}
+# users = {
+#     'user1': {
+#         'full_name': 'Remi',
+#         'username': 'remi_the_rems',
+#         'date_of_birth': '1990-01-01',
+#         'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+#         'friends': ['user2', 'user3', 'user4'],
+#     },
+#     'user2': {
+#         'full_name': 'Blake',
+#         'username': 'blake',
+#         'date_of_birth': '1990-01-01',
+#         'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+#         'friends': ['user1'],
+#     },
+#     'user3': {
+#         'full_name': 'Jordan',
+#         'username': 'jordanjordanjordan',
+#         'date_of_birth': '1990-01-01',
+#         'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+#         'friends': ['user1', 'user4'],
+#     },
+#     'user4': {
+#         'full_name': 'Gemmy',
+#         'username': 'gems',
+#         'date_of_birth': '1990-01-01',
+#         'profile_image': 'https://upload.wikimedia.org/wikipedia/commons/c/c8/Puma_shoes.jpg',
+#         'friends': ['user1', 'user3'],
+#     },
+# }
 
 
-def get_user_posts(user_id):
-    """Returns a list of a user's posts.
+# def get_user_posts(user_id):
+#     """Returns a list of a user's posts.
 
-    This function currently returns random data. You will re-write it in Unit 3.
-    """
-    content = random.choice([
-        'Had a great workout today!',
-        'The AI really motivated me to push myself further, I ran 10 miles!',
-    ])
-    return [{
-        'user_id': user_id,
-        'post_id': 'post1',
-        'timestamp': '2024-01-01 00:00:00',
-        'content': content,
-        'image': 'image_url',
-    }]
+#     This function currently returns random data. You will re-write it in Unit 3.
+#     """
+#     content = random.choice([
+#         'Had a great workout today!',
+#         'The AI really motivated me to push myself further, I ran 10 miles!',
+#     ])
+#     return [{
+#         'user_id': user_id,
+#         'post_id': 'post1',
+#         'timestamp': '2024-01-01 00:00:00',
+#         'content': content,
+#         'image': 'image_url',
+#     }]
 
 
 
@@ -176,7 +178,7 @@ def get_job_count_by_company(company_name: str) -> int:
             return row.cnt
         return 0
     except Exception as e:
-        print(f"get_job_count_by_company error: {e}")
+        print(f"get_job_count_by_company error: {e}") 
         return 0
 
 
@@ -212,7 +214,7 @@ def search_jobs(keyword: str) -> list[dict]:
 
 def get_jobs():
     return get_jobs_from_bigquery()
-    
+     
 def get_chat_context(user_id: str, job_id: str) -> list[dict]:
     """
     Retrieves the history of a specific conversation to give the AI 'memory'.
@@ -493,6 +495,30 @@ def get_resume_skills(resume_id):
     except Exception as e:
         print(f"get_resume_skills error: {e}")
         return []
+
+def get_job_skills(job_id):
+    query = """
+        SELECT t1.job_ID, t3.skill_name
+        FROM `kenneth-ye-fiu.ISE.JobInformation` AS t1
+        INNER JOIN `kenneth-ye-fiu.ISE.jobSkillsTable` AS t2
+            ON t1.job_ID = t2.job_ID
+        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t3
+            ON t2.skill_ID = t3.skill_ID
+        WHERE t1.job_ID = @job_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("job_ID", "STRING", job_id) 
+        ]
+    )
+    
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        return [dict(row) for row in query_job]
+    except Exception as e:
+        print(f"get_resume_skills error: {e}")
+        return []
+
     
 
 def get_project_with_skills(resume_id):
@@ -524,8 +550,21 @@ def get_project_with_skills(resume_id):
         print(f"Error fetching project skills: {e}")
         return []
 
+
+def get_match_score(resume_id, job_id):
+    onlyResumeSkills = set([item['skill_name'] for item in get_resume_skills(resume_id)])
+    onlyJobSkills = set([item['skill_name'] for item in get_job_skills(job_id)])
+
+    commonSkills = onlyResumeSkills.intersection(onlyJobSkills)
+
+    matchScore = (len(commonSkills) / len(onlyJobSkills)) * 100
+    
+    return matchScore
+
 if __name__ == "__main__":
-    fetch_and_save_jobs()
+    # fetch_and_save_jobs()
+
+    get_match_score('101', 'J001')
 
   
 
