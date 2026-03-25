@@ -22,6 +22,9 @@ load_dotenv()
 
 bq_client = bigquery.Client()
 
+PROJECT_ID = os.getenv("PROJECT_ID")
+DATABASE_ID = os.getenv("DATABASE_ID")
+
 def get_bq_client():
     """
     Initializes the BigQuery client only when needed.
@@ -160,9 +163,12 @@ def parse_jobs(api_data):
 
 def get_job_count_by_company(company_name: str) -> int:
     """Count the number of open job listings for a given company_name."""
-    query = """
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+    
+    query = f"""
         SELECT COUNT(*) AS cnt
-        FROM `kenneth-ye-fiu.ISE.JobInformation`
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation`
         WHERE LOWER(company_name) = LOWER(@company_name)
     """
     job_config = bigquery.QueryJobConfig(
@@ -183,15 +189,15 @@ def get_job_count_by_company(company_name: str) -> int:
 
 
 def search_jobs(keyword: str) -> list[dict]:
-    query = """
+    query = f"""
         SELECT 
             j.job_ID, j.company_name, j.title, j.description,
             j.location, j.job_type, j.salary_min, j.salary_max,
             j.date_posted, j.date_expire,
             ARRAY_AGG(s.skill_name IGNORE NULLS) AS skills
-        FROM `kenneth-ye-fiu.ISE.JobInformation` j
-        LEFT JOIN `kenneth-ye-fiu.ISE.jobSkillsTable` js ON j.job_ID = js.job_ID
-        LEFT JOIN `kenneth-ye-fiu.ISE.skillsTable` s ON js.skill_ID = s.skill_ID
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation` j
+        LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.jobSkillsTable` js ON j.job_ID = js.job_ID
+        LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` s ON js.skill_ID = s.skill_ID
         WHERE LOWER(j.title)       LIKE LOWER(CONCAT('%', @keyword, '%'))
            OR LOWER(j.description) LIKE LOWER(CONCAT('%', @keyword, '%'))
         GROUP BY j.job_ID, j.company_name, j.title, j.description,
@@ -221,9 +227,9 @@ def get_chat_context(user_id: str, job_id: str) -> list[dict]:
     Filters by user and job so the bot doesn't mix up different applications.
     """
     # SQL Query: Grabs the prompts and responses in chronological order
-    query = """
+    query = f"""
         SELECT user_prompt, ai_response
-        FROM `kenneth-ye-fiu.ISE.chatbotTABLE`
+        FROM `{PROJECT_ID}.{DATABASE_ID}.chatbotTABLE`
         WHERE user_ID = @user_id AND job_ID = @job_id
         ORDER BY session_ID ASC
     """
@@ -252,7 +258,7 @@ def save_chat_session(user_id: str, resume_id: str, job_id: str, user_prompt: st
     Logs a new chat interaction into the database. 
     This is critical for tracking user engagement and AI accuracy.
     """
-    table_id = "kenneth-ye-fiu.ISE.chatbotTABLE"
+    table_id = f"{PROJECT_ID}.{DATABASE_ID}.chatbotTABLE"
     
     # Generate a unique ID for this specific message pair
     session_id = str(uuid.uuid4())
@@ -291,13 +297,13 @@ def get_resume_with_skills(resume_id: str) -> dict:
     """
     # SQL Query: Uses LEFT JOINs to ensure we get the resume even if skills are missing
     # ARRAY_AGG(s.skill_name) turns multiple skill rows into a single Python list
-    query = """
+    query = f"""
         SELECT 
             r.name, r.location, r.university,
             ARRAY_AGG(s.skill_name IGNORE NULLS) AS skills
-        FROM `kenneth-ye-fiu.ISE.Resumes` r
-        LEFT JOIN `kenneth-ye-fiu.ISE.resumeSkill` rs ON r.resume_ID = rs.resume_ID
-        LEFT JOIN `kenneth-ye-fiu.ISE.Skills` s ON rs.skill_ID = s.skill_ID
+        FROM `{PROJECT_ID}.{DATABASE_ID}.Resumes` r
+        LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.resumeSkill` rs ON r.resume_ID = rs.resume_ID
+        LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.Skills` s ON rs.skill_ID = s.skill_ID
         WHERE r.resume_ID = @resume_id
         GROUP BY r.name, r.location, r.university
     """
@@ -320,11 +326,11 @@ def get_resume_with_skills(resume_id: str) -> dict:
 
 def get_user_profile(user_id: str) -> list:
 
-    # PROJECT_ID = os.getenv("PROJECT_ID")
-    # DATABASE_ID = os.getenv("DATABASE_ID")
-    # Use Kenneth dataset until femi's gets set up
-    PROJECT_ID = "kenneth-ye-fiu"
-    DATABASE_ID = "ISE"
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+    # # Use Kenneth dataset until femi's gets set up
+    # PROJECT_ID = "kenneth-ye-fiu"
+    # DATABASE_ID = "ISE"
 
     # Check for database validity
     if not PROJECT_ID or not DATABASE_ID:
@@ -361,11 +367,11 @@ def get_user_profile(user_id: str) -> list:
     return user
 
 def get_user_resume(user_id: str) -> dict:
-    # PROJECT_ID = os.getenv("PROJECT_ID")
-    # DATABASE_ID = os.getenv("DATABASE_ID")
-    # Use Kenneth dataset until femi's gets set up
-    PROJECT_ID = "kenneth-ye-fiu"
-    DATABASE_ID = "ISE"
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    DATABASE_ID = os.getenv("DATABASE_ID")
+    # # Use Kenneth dataset until femi's gets set up
+    # PROJECT_ID = "kenneth-ye-fiu"
+    # DATABASE_ID = "ISE"
 
     # Check for database validity
     if not PROJECT_ID or not DATABASE_ID:
@@ -410,9 +416,9 @@ def get_user_resume(user_id: str) -> dict:
 
 
 def filter_jobs_by_job_type(job_type):
-    query = """
+    query = f"""
         SELECT *
-        FROM `kenneth-ye-fiu.ISE.JobInformation`
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation`
         WHERE
         job_type = @job_type  
     """
@@ -431,9 +437,9 @@ def filter_jobs_by_job_type(job_type):
 
         
 def filter_jobs_by_location(location):
-    query = """
+    query = f"""
         SELECT *
-        FROM `kenneth-ye-fiu.ISE.JobInformation`
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation`
         WHERE
         location = @location  
     """
@@ -452,12 +458,12 @@ def filter_jobs_by_location(location):
 
 
 def filter_jobs_by_skill_name(skill_name):
-    query = """
+    query = f"""
         SELECT t1.*
-        FROM `kenneth-ye-fiu.ISE.JobInformation` AS t1
-        INNER JOIN `kenneth-ye-fiu.ISE.jobSkillsTable` AS t2
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation` AS t1
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.jobSkillsTable` AS t2
         ON t1.job_ID = t2.job_ID
-        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t3
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` AS t3
         ON t2.skill_ID = t3.skill_ID
         WHERE t3.skill_name = @skill_name
     """
@@ -475,10 +481,10 @@ def filter_jobs_by_skill_name(skill_name):
         return []
 
 def get_resume_skills(resume_id):
-    query = """
+    query = f"""
         SELECT t1.resume_ID, t2.skill_name
-        FROM `kenneth-ye-fiu.ISE.resumeSkill` AS t1
-        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t2
+        FROM `{PROJECT_ID}.{DATABASE_ID}.resumeSkill` AS t1
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` AS t2
         ON t1.skill_ID = t2.skill_ID
         WHERE t1.resume_ID = @resume_id
     """
@@ -497,12 +503,12 @@ def get_resume_skills(resume_id):
         return []
 
 def get_job_skills(job_id):
-    query = """
+    query = f"""
         SELECT t1.job_ID, t3.skill_name
-        FROM `kenneth-ye-fiu.ISE.JobInformation` AS t1
-        INNER JOIN `kenneth-ye-fiu.ISE.jobSkillsTable` AS t2
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation` AS t1
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.jobSkillsTable` AS t2
             ON t1.job_ID = t2.job_ID
-        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t3
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` AS t3
             ON t2.skill_ID = t3.skill_ID
         WHERE t1.job_ID = @job_id
     """
@@ -522,15 +528,15 @@ def get_job_skills(job_id):
     
 
 def get_project_with_skills(resume_id):
-    query = """
+    query = f"""
         SELECT DISTINCT 
             t1.project_title, 
             t1.project_start_date, 
             t3.skill_name
-        FROM `kenneth-ye-fiu.ISE.project_info` AS t1
-        INNER JOIN `kenneth-ye-fiu.ISE.projectSkillsTable` AS t2 
+        FROM `{PROJECT_ID}.{DATABASE_ID}.project_info` AS t1
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.projectSkillsTable` AS t2 
             ON t1.project_ID = t2.project_ID
-        INNER JOIN `kenneth-ye-fiu.ISE.skillsTable` AS t3
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` AS t3
             ON t2.skill_ID = t3.skill_ID
         WHERE t1.resume_ID = @resume_id
         ORDER BY t1.project_start_date DESC;
