@@ -561,18 +561,21 @@ def get_match_score(resume_id, job_id):
     onlyResumeSkills = set([item['skill_name'] for item in get_resume_skills(resume_id)])
     onlyJobSkills = set([item['skill_name'] for item in get_job_skills(job_id)])
 
+    print(onlyJobSkills)
+    print(onlyResumeSkills)
+
     commonSkills = onlyResumeSkills.intersection(onlyJobSkills)
 
+    if not onlyJobSkills: 
+        return 0.0, commonSkills # Return 0 if there are no job skills to match against
+        
     matchScore = (len(commonSkills) / len(onlyJobSkills)) * 100
-    
-    return matchScore
-
-    
+    return matchScore, commonSkills
 
 if __name__ == "__main__":
-    # fetch_and_save_jobs()
+    fetch_and_save_jobs()
 
-    get_match_score('101', 'J001')
+    print(get_match_score('104', 'J001')[0])
 
   
 

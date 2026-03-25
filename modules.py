@@ -16,7 +16,7 @@ from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_con
 import pdfplumber
 
 
-PROJECT_ID = "caleb-ligon-hu"   #TODO: Check if team can utilize the api with it being under my project
+PROJECT_ID = "oluwanifemi-elias-hu"   #TODO: Check if team can utilize the api with it being under my project
 LOCATION = "us-central1"
 
 # do not use global initialization, move them into a helper
@@ -745,8 +745,9 @@ def KeywordMatcher(container):
                 import time
                 time.sleep(1.5) 
                 
-                # score = get_match_score(resume_id, job_id)
-                score = 78
+                score = get_match_score("104", "J004")[0]
+                match_found = get_match_score("104", "J004")[1]
+                # score = 78
                 st.markdown(f"""
                     <div class="match-card">
                         <h2 style='margin:0; color:#000000;'>{score}%</h2>
