@@ -567,6 +567,8 @@ def get_match_score(resume_id, job_id):
     
     return matchScore
 
+    
+
 if __name__ == "__main__":
     # fetch_and_save_jobs()
 
