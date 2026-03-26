@@ -190,18 +190,10 @@ class TestBigQueryInsert(unittest.TestCase):
         mock_parse.assert_called_once()
         mock_insert.assert_called_once()
 
-    @patch("db_handler.os.getenv")
+    @patch("db_handler.PROJECT_ID", "John_Doe")
+    @patch("db_handler.DATABASE_ID", "jobs")
     @patch("db_handler.bigquery.Client")
-    def test_insert_jobs_to_bigquery_success(self, mock_client_class, mock_getenv):
-        def fake_getenv(key):
-            values = {
-                "PROJECT_ID": "John_Doe",
-                "DATABASE_ID": "jobs"
-            }
-            return values.get(key)
-
-        mock_getenv.side_effect = fake_getenv
-
+    def test_insert_jobs_to_bigquery_success(self, mock_client_class):
         mock_client = MagicMock()
         mock_client.insert_rows_json.return_value = []
         mock_client_class.return_value = mock_client
@@ -225,40 +217,59 @@ class TestBigQueryInsert(unittest.TestCase):
         self.assertEqual(errors["job_skill_errors"], [])
         self.assertEqual(mock_client.insert_rows_json.call_count, 3)
 
-    @patch("db_handler.os.getenv")
+        mock_client_class.assert_called_once_with(project="John_Doe")
+
+        mock_client.insert_rows_json.assert_any_call(
+            "John_Doe.jobs.JobInformation",
+            [{
+                "job_ID": "123",
+                "company_name": "Google",
+                "title": "Software Engineer Intern",
+                "description": "Python and Git required.",
+                "location": "Remote",
+            }]
+        )
+
+        mock_client.insert_rows_json.assert_any_call(
+            "John_Doe.jobs.skillsTable",
+            [
+                {"skill_ID": "python", "skill_name": "python"},
+                {"skill_ID": "git", "skill_name": "git"}
+            ]
+        )
+
+        mock_client.insert_rows_json.assert_any_call(
+            "John_Doe.jobs.jobSkillsTable",
+            [
+                {"job_skill_ID": "123_python", "job_ID": "123", "skill_ID": "python"},
+                {"job_skill_ID": "123_git", "job_ID": "123", "skill_ID": "git"}
+            ]
+        )
+
+    @patch("db_handler.PROJECT_ID", "John_Doe")
+    @patch("db_handler.DATABASE_ID", "jobs")
     @patch("db_handler.bigquery.Client")
-    def test_get_jobs_from_bigquery(self, mock_client_class, mock_getenv):
-        def fake_getenv(key):
-            values = {
-                "PROJECT_ID": "John_Doe",
-                "DATABASE_ID": "jobs"
-            }
-            return values.get(key)
+    def test_get_jobs_from_bigquery(self, mock_client_class):
+        fake_row_1 = MagicMock()
+        fake_row_1.job_ID = "123"
+        fake_row_1.company_name = "Google"
+        fake_row_1.title = "Software Engineer Intern"
+        fake_row_1.description = "Python and Git required."
+        fake_row_1.location = "Remote"
+        fake_row_1.skills = ["python", "git"]
 
-        mock_getenv.side_effect = fake_getenv
+        fake_row_2 = MagicMock()
+        fake_row_2.job_ID = "456"
+        fake_row_2.company_name = "Meta"
+        fake_row_2.title = "Backend Engineer Intern"
+        fake_row_2.description = "Java and SQL required."
+        fake_row_2.location = "California"
+        fake_row_2.skills = ["java", "sql"]
 
-        row1 = MagicMock()
-        row1.job_ID = "123"
-        row1.company_name = "Google"
-        row1.title = "Software Engineer Intern"
-        row1.description = "Python and Git required."
-        row1.location = "Remote"
-        row1.skills = ["python", "git"]
-
-        row2 = MagicMock()
-        row2.job_ID = "456"
-        row2.company_name = "Meta"
-        row2.title = "Backend Engineer Intern"
-        row2.description = "Java and SQL required."
-        row2.location = "California"
-        row2.skills = ["java", "sql"]
-
-        fake_rows = [row1, row2]
+        fake_rows = [fake_row_1, fake_row_2]
 
         mock_client = MagicMock()
-        mock_query_job = MagicMock()
-        mock_query_job.result.return_value = fake_rows
-        mock_client.query.return_value = mock_query_job
+        mock_client.query.return_value.result.return_value = fake_rows
         mock_client_class.return_value = mock_client
 
         jobs = db_handler.get_jobs_from_bigquery()

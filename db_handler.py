@@ -120,7 +120,7 @@ def get_jobs_from_bigquery():
         LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` s
         ON s.skill_ID = js.skill_ID
         GROUP BY 
-        j.job_id, 
+        j.job_ID, 
         j.company_name, 
         j.title, 
         j.description, 
