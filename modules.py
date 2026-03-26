@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
-from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline
 import pdfplumber
 
 
@@ -686,13 +686,16 @@ def ResumeUploader(container):
             else:
                 extracted_text = ""
 
-            # Store the extracted text in session state for GeminiChatbot to use
-            st.session_state['user_resume'] = extracted_text
-            st.session_state['current_resume'] = uploaded_file 
-
-            # add the section that processes reumen
-
-            st.success("✅ File Ready & Processed!")
+            if 'current_resume_id' not in st.session_state:
+                with st.spinner("Processing & Saving to Database..."):
+                    # Call your new pipeline function
+                    new_id = save_resume_pipeline(extracted_text) 
+                    
+                    # 3. STORE THE NEW ID IN SESSION STATE
+                    st.session_state['current_resume_id'] = new_id
+                    st.session_state['user_resume'] = extracted_text
+                
+                st.success(f"✅ Resume Processed! (ID: {st.session_state.get('current_resume_id')})")
         else:
             if 'current_resume' in st.session_state:
                 del st.session_state['current_resume']
@@ -738,15 +741,16 @@ def KeywordMatcher(container):
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 5px;'>Compare to Job Description </p>", unsafe_allow_html=True)
                 
         # 1. Define the condition: Is the resume missing?
-        is_disabled = 'current_resume' not in st.session_state
+        resume_id = st.session_state.get('current_resume_id')
+        job_id = st.session_state.get('current_job_id')
+        is_disabled = resume_id is None
          # 2. Use a single button with a dynamic 'disabled' property
         if st.button("Analyze Match Score", type="primary", use_container_width=True, key="analyze_match_btn", disabled=is_disabled):
             with st.spinner("Analyzing..."):
                 import time
                 time.sleep(1.5) 
                 
-                score = get_match_score("102", "J004")[0]
-                match_found = get_match_score("102", "J004")[1]
+                score, match_found = get_match_score(resume_id, job_id)
                 # score = 78
                 st.markdown(f"""
                     <div class="match-card">
@@ -754,7 +758,10 @@ def KeywordMatcher(container):
                         <p style='color: #666;'>Keyword Match Score</p>
                     </div>
                 """, unsafe_allow_html=True)
-                st.info(f"**Matches found:** {match_found}")
+                if match_found:
+                    st.info(f"**Matches found:** {', '.join(match_found)}")
+                else:
+                    st.warning("No matching skills found between your resume and this job.")
 
         # 3. Show the warning caption only if disabled
         if is_disabled:

@@ -16,6 +16,7 @@ from google.cloud import bigquery
 from db_handler import insert_jobs_to_bigquery, get_jobs_from_bigquery
 from dotenv import load_dotenv
 import os
+import json
 
 
 load_dotenv()
@@ -565,6 +566,130 @@ def get_match_score(resume_id, job_id):
         
     matchScore = (len(commonSkills) / len(onlyJobSkills)) * 100
     return matchScore, commonSkills
+
+# processing new resumes
+def get_next_id(table_id, id_column, prefix="", padding=3):
+    """ Fetches the max ID from a table and increments it. """
+    query = f"SELECT MAX({id_column}) as max_id FROM `{table_id}`"
+    try:
+        results = bq_client.query(query).result()
+        row = next(results, None)
+        
+        if row and row.max_id:
+            # Extract only the digits (e.g., 'RSK012' -> 12)
+            match = re.search(r'\d+', str(row.max_id))
+            num = int(match.group()) + 1 if match else 1
+        else:
+            num = 1
+            
+        # If padding is 0, just returns the string number (e.g., '105')
+        if padding == 0:
+            return str(num)
+        return f"{prefix}{str(num).zfill(padding)}"
+    except Exception as e:
+        print(f"ID Generation Error: {e}")
+        return "1"
+
+    import json
+from vertexai.generative_models import GenerativeModel, GenerationConfig
+
+def ai_extract_resume_data(pdf_text):
+    model = GenerativeModel("gemini-2.5-flash-lite")
+    
+    prompt = f"""
+    Extract the following information from this resume text:
+    1. Full Name
+    2. Location (City, State)
+    3. University Name
+    4. A list of technical skills (e.g., Python, SQL)
+    
+    Return the result EXACTLY in this JSON format:
+    {{
+        "name": "string",
+        "location": "string",
+        "university": "string",
+        "skills": ["skill1", "skill2"]
+    }}
+    
+    Resume Text:
+    {pdf_text}
+    """
+    
+    response = model.generate_content(
+        prompt,
+        generation_config=GenerationConfig(response_mime_type="application/json", max_output_tokens=1000, temperature=0.1)
+    )
+    return json.loads(response.text)
+
+def sync_skill_to_db(skill_name):
+    """ Checks if a skill exists (case-insensitive) and returns its ID. """
+    check_query = """
+        SELECT skill_ID FROM `oluwanifemi-elias-hu.ISE.skillsTable` 
+        WHERE LOWER(skill_name) = LOWER(@name)
+    """
+    params = [bigquery.ScalarQueryParameter("name", "STRING", skill_name)]
+    results = bq_client.query(check_query, job_config=bigquery.QueryJobConfig(query_parameters=params)).result()
+    
+    existing = next(results, None)
+    if existing:
+        return existing.skill_ID
+    
+    # Otherwise, create the new skill
+    new_id = get_next_id("oluwanifemi-elias-hu.ISE.skillsTable", "skill_ID", prefix="SK", padding=3)
+    insert_query = """
+        INSERT INTO `oluwanifemi-elias-hu.ISE.skillsTable` (skill_ID, skill_name)
+        VALUES (@id, @name)
+    """
+    insert_params = [
+        bigquery.ScalarQueryParameter("id", "STRING", new_id),
+        bigquery.ScalarQueryParameter("name", "STRING", skill_name),
+    ]
+    bq_client.query(insert_query, job_config=bigquery.QueryJobConfig(query_parameters=insert_params)).result()
+    return new_id
+
+def save_resume_pipeline(raw_text):
+    # Parse
+    extracted = ai_extract_resume_data(raw_text)
+    
+    # 2. Get New IDs for User and Resume
+    new_res_id = get_next_id("oluwanifemi-elias-hu.ISE.resumesTable", "resume_ID", padding=0)
+    new_user_id = get_next_id("oluwanifemi-elias-hu.ISE.resumesTable", "user_ID", padding=0)
+    
+    # 3. Insert into resumesTable
+    resume_sql = """
+    INSERT INTO `oluwanifemi-elias-hu`.`ISE`.`resumesTable` 
+    (resume_ID, user_ID, name, location, university)
+    VALUES (@rid, @uid, @name, @loc, @univ)
+    """
+    res_params = [
+        bigquery.ScalarQueryParameter("rid", "STRING", new_res_id),
+        bigquery.ScalarQueryParameter("uid", "STRING", new_user_id),
+        bigquery.ScalarQueryParameter("name", "STRING", extracted['name']),
+        bigquery.ScalarQueryParameter("loc", "STRING", extracted['location']),
+        bigquery.ScalarQueryParameter("univ", "STRING", extracted['university']),
+    ]
+    bq_client.query(resume_sql, job_config=bigquery.QueryJobConfig(query_parameters=res_params)).result()
+
+    # 4. Link every skill found by the AI
+    for s_name in extracted['skills']:
+        skill_id = sync_skill_to_db(s_name)
+        
+        # Create unique link ID (RSK...)
+        rsk_id = get_next_id("oluwanifemi-elias-hu.ISE.resumeSkill", "resume_Skill_ID", prefix="RSK", padding=3)
+        
+        link_sql = """
+        INSERT INTO `oluwanifemi-elias-hu`.`ISE`.`resumeSkill` 
+        (resume_Skill_ID, resume_ID, skill_ID)
+        VALUES (@rskid, @rid, @sid)
+        """
+        link_params = [
+            bigquery.ScalarQueryParameter("rskid", "STRING", rsk_id),
+            bigquery.ScalarQueryParameter("rid", "STRING", new_res_id),
+            bigquery.ScalarQueryParameter("sid", "STRING", skill_id),
+        ]
+        bq_client.query(link_sql, job_config=bigquery.QueryJobConfig(query_parameters=link_params)).result()
+
+    return new_res_id # Return this so your app can show the newly created resume
 
 if __name__ == "__main__":
     fetch_and_save_jobs()
