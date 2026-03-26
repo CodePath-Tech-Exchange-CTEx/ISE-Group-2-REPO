@@ -22,8 +22,8 @@ load_dotenv()
 
 bq_client = bigquery.Client()
 
-PROJECT_ID = os.getenv("PROJECT_ID")
-DATABASE_ID = os.getenv("DATABASE_ID")
+PROJECT_ID = "oluwanifemi-elias-hu"
+DATABASE_ID = "ISE"
 
 def get_bq_client():
     """
@@ -163,8 +163,6 @@ def parse_jobs(api_data):
 
 def get_job_count_by_company(company_name: str) -> int:
     """Count the number of open job listings for a given company_name."""
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
     
     query = f"""
         SELECT COUNT(*) AS cnt
@@ -326,8 +324,6 @@ def get_resume_with_skills(resume_id: str) -> dict:
 
 def get_user_profile(user_id: str) -> list:
 
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
     # # Use Kenneth dataset until femi's gets set up
     # PROJECT_ID = "kenneth-ye-fiu"
     # DATABASE_ID = "ISE"
@@ -367,8 +363,7 @@ def get_user_profile(user_id: str) -> list:
     return user
 
 def get_user_resume(user_id: str) -> dict:
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
+
     # # Use Kenneth dataset until femi's gets set up
     # PROJECT_ID = "kenneth-ye-fiu"
     # DATABASE_ID = "ISE"
@@ -575,7 +570,7 @@ def get_match_score(resume_id, job_id):
 if __name__ == "__main__":
     fetch_and_save_jobs()
 
-    print(get_match_score('104', 'J001')[0])
+    print(get_match_score('104', 'J004')[0])
 
   
 

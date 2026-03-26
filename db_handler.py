@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-
+PROJECT_ID = "oluwanifemi-elias-hu"
+DATABASE_ID = "ISE"
 
 
 def insert_jobs_to_bigquery(jobs):
@@ -12,9 +13,6 @@ def insert_jobs_to_bigquery(jobs):
     This function takes a list of job dictionaries, separates them into
     job data and skill data, and inserts them into two separate BigQuery tables.
     """
-
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
 
     if not PROJECT_ID or not DATABASE_ID:
         print("ERROR: PROJECT_ID and DATABASE_ID environment variables must be set.")
@@ -108,41 +106,46 @@ def get_jobs_from_bigquery():
         print("WARNING: BigQuery is not configured. Returning empty jobs list.")
         return []
 
-    client = bigquery.Client(project=PROJECT_ID)
+    try:
+        client = bigquery.Client(project=PROJECT_ID)
+    
+        query = f"""
+        SELECT 
+        j.job_ID, 
+        j.company_name, 
+        j.title, 
+        j.description, 
+        j.location, 
+        ARRAY_AGG(DISTINCT s.skill_name IGNORE NULLS) AS skills
+        FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation` j
+        LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.jobSkillsTable` js
+        ON j.job_ID = js.job_ID
+        LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` s
+        ON s.skill_ID = js.skill_ID
+        GROUP BY 
+        j.job_id, 
+        j.company_name, 
+        j.title, 
+        j.description, 
+        j.location
+        LIMIT 20
+        """
+    
+        query_job = client.query(query)
+        results = query_job.result()
+    
+        jobs = []
+        for row in results:
+            jobs.append({
+                "id": row.job_ID,
+                "company": row.company_name,
+                "title": row.title,
+                "description": row.description,
+                "location": row.location,
+                "skills": list(row.skills) if row.skills else []
+            })
+        return jobs
 
-    query = f"""
-    SELECT 
-    j.job_ID, 
-    j.company_name, 
-    j.title, 
-    j.description, 
-    j.location, 
-    ARRAY_AGG(DISTINCT s.skill_name IGNORE NULLS) AS skills
-    FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation` j
-    LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.jobSkillsTable` js
-    ON j.job_ID = js.job_ID
-    LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` s
-    ON s.skill_ID = js.skill_ID
-    GROUP BY 
-    j.job_id, 
-    j.company_name, 
-    j.title, 
-    j.description, 
-    j.location
-    LIMIT 20
-    """
-
-    query_job = client.query(query)
-    results = query_job.result()
-
-    jobs = []
-    for row in results:
-        jobs.append({
-            "id": row.job_ID,
-            "company": row.company_name,
-            "title": row.title,
-            "description": row.description,
-            "location": row.location,
-            "skills": list(row.skills) if row.skills else []
-        })
-    return jobs
+    except Exception as e:
+        print(f"Error fetching jobs from BigQuery: {e}")
+        return []
