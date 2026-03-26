@@ -98,9 +98,6 @@ def insert_jobs_to_bigquery(jobs):
     }
 
 def get_jobs_from_bigquery():
-
-    PROJECT_ID = os.getenv("PROJECT_ID")
-    DATABASE_ID = os.getenv("DATABASE_ID")
     
     if not PROJECT_ID or not DATABASE_ID:
         print("WARNING: BigQuery is not configured. Returning empty jobs list.")

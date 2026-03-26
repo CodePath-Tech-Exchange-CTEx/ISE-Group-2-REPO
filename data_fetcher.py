@@ -23,7 +23,8 @@ load_dotenv()
 bq_client = bigquery.Client()
 
 PROJECT_ID = "oluwanifemi-elias-hu"
-DATABASE_ID = "ISE"
+DATABASE_ID = "ISE" 
+
 
 def get_bq_client():
     """
