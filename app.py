@@ -93,6 +93,7 @@ if __name__ == '__main__':
                 for j in jobs_to_show:
                     if f"{j.get('title')} at {j.get('company')}" == selected_job_name:
                         st.session_state['current_job_desc'] = j.get('description')
+                        st.session_state['current_job_id'] = j.get('id') # for match score
             else:
                 st.warning("No jobs found matching your search.")
 

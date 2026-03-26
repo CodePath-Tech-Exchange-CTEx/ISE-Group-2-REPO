@@ -484,6 +484,50 @@ class TestDataFilter(unittest.TestCase):
         
         self.assertEqual(score, 0.0)
         self.assertEqual(common, set())
+
+    @patch("data_fetcher.bq_client")
+    @patch("data_fetcher.sync_skill_to_db")
+    @patch("data_fetcher.get_next_id")
+    @patch("data_fetcher.ai_extract_resume_data")
+    def test_save_resume_pipeline_success(self, mock_ai, mock_id, mock_sync, mock_bq):
+        """Verify the full pipeline: AI extraction -> ID generation -> DB insertion."""
+        
+        # 1. Mock AI Response
+        mock_ai.return_value = {
+            "name": "Jane Doe",
+            "location": "Miami, FL",
+            "university": "FIU",
+            "skills": ["Python", "SQL"]
+        }
+        
+        # 2. Mock ID Generation
+        # Side effect returns a new ID each time it's called
+        mock_id.side_effect = ["RES105", "USR105", "RSK001", "RSK002"]
+        
+        # 3. Mock Skill Sync
+        # Pretend Python is SK001 and SQL is SK002
+        mock_sync.side_effect = ["SK001", "SK002"]
+        
+        # 4. Mock BigQuery Query Object
+        # We need to mock the .result() call so it doesn't crash
+        mock_bq.query.return_value.result.return_value = []
+
+        # EXECUTE
+        result_id = data_fetcher.save_resume_pipeline("Dummy PDF Text")
+
+        # ASSERTIONS
+        # Check if it returned the correct resume ID
+        self.assertEqual(result_id, "RES105")
+        
+        # Verify the AI was called with our text
+        mock_ai.assert_called_once_with("Dummy PDF Text")
+        
+        # Verify BigQuery was called for: 1 Resume Insert + 2 Skill Link Inserts = 3 total
+        self.assertEqual(mock_bq.query.call_count, 3)
+        
+        # Verify the first call was the Resume Table insert
+        first_call_args = mock_bq.query.call_args_list[0]
+        self.assertIn("resumesTable", first_call_args[0][0])
             
 
 if __name__ == "__main__":
