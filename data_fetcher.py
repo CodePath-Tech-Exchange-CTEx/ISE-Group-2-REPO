@@ -425,7 +425,7 @@ def filter_jobs_by_job_type(job_type):
     )
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        return [dict(row) for row in query_job]
+        return [dict(row) for row in query_job.result()]
 
     except Exception as e:
         print(f"filter_jobs_by_job_type error: {e}")
@@ -446,7 +446,7 @@ def filter_jobs_by_location(location):
     )
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        return [dict(row) for row in query_job]
+        return [dict(row) for row in query_job.result()]
 
     except Exception as e:
         print(f"filter_jobs_by_location error: {e}")
@@ -470,7 +470,7 @@ def filter_jobs_by_skill_name(skill_name):
     )
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        return [dict(row) for row in query_job]
+        return [dict(row) for row in query_job.result()]
 
     except Exception as e:
         print(f"filter_jobs_by_skill_name error: {e}")
@@ -478,10 +478,12 @@ def filter_jobs_by_skill_name(skill_name):
 
 def get_resume_skills(resume_id):
     query = f"""
-        SELECT t1.resume_ID, t2.skill_name
-        FROM `{PROJECT_ID}.{DATABASE_ID}.resumeSkill` AS t1
-        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` AS t2
-        ON t1.skill_ID = t2.skill_ID
+        SELECT t1.resume_ID, t3.skill_name
+        FROM `{PROJECT_ID}.{DATABASE_ID}.resumesTable` AS t1
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.resumeSkill` AS t2
+            ON t1.resume_ID = t2.resume_ID
+        INNER JOIN `{PROJECT_ID}.{DATABASE_ID}.skillsTable` AS t3
+            ON t2.skill_ID = t3.skill_ID
         WHERE t1.resume_ID = @resume_id
     """
 
@@ -490,10 +492,9 @@ def get_resume_skills(resume_id):
             bigquery.ScalarQueryParameter("resume_id", "STRING", resume_id) 
         ]
     )
-    
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        return [dict(row) for row in query_job]
+        return [dict(row) for row in query_job.result()]
     except Exception as e:
         print(f"get_resume_skills error: {e}")
         return []
@@ -510,13 +511,13 @@ def get_job_skills(job_id):
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("job_ID", "STRING", job_id) 
+            bigquery.ScalarQueryParameter("job_id", "STRING", job_id) 
         ]
     )
     
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        return [dict(row) for row in query_job]
+        return [dict(row) for row in query_job.result()]
     except Exception as e:
         print(f"get_resume_skills error: {e}")
         return []
@@ -546,7 +547,7 @@ def get_project_with_skills(resume_id):
 
     try:
         query_job = bq_client.query(query, job_config=job_config)
-        return [dict(row) for row in query_job]
+        return [dict(row) for row in query_job.result()]
         
     except Exception as e:
         print(f"Error fetching project skills: {e}")
@@ -556,9 +557,6 @@ def get_project_with_skills(resume_id):
 def get_match_score(resume_id, job_id):
     onlyResumeSkills = set([item['skill_name'] for item in get_resume_skills(resume_id)])
     onlyJobSkills = set([item['skill_name'] for item in get_job_skills(job_id)])
-
-    print(onlyJobSkills)
-    print(onlyResumeSkills)
 
     commonSkills = onlyResumeSkills.intersection(onlyJobSkills)
 
@@ -570,9 +568,8 @@ def get_match_score(resume_id, job_id):
 
 if __name__ == "__main__":
     fetch_and_save_jobs()
-
-    print(get_match_score('104', 'J004')[0])
-
+    
+   
   
 
 

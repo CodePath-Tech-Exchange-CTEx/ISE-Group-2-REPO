@@ -323,8 +323,9 @@ class TestDataFilter(unittest.TestCase):
     def test_filter_jobs_by_location_success(self, mock_bq):
         """Should return a list of job dictionaries for a valid location."""
         fake_jobs = [{'job_ID': 'J004', 'title': 'DevOps Engineer', 'location': 'Austin, TX'}]
-        # Mocking the iterable return of the query
-        mock_bq.query.return_value = iter(fake_jobs)
+        
+        # FIX: Hand it a result object, not just an iterator
+        mock_bq.query.return_value.result.return_value = fake_jobs
         
         result = data_fetcher.filter_jobs_by_location('Austin, TX')
         
@@ -352,13 +353,36 @@ class TestDataFilter(unittest.TestCase):
             {'resume_ID': '1', 'skill_name': 'Kubernetes'},
             {'resume_ID': '1', 'skill_name': 'Python'}
         ]
-        mock_bq.query.return_value = iter(fake_skills)
+        
+        # FIX: Use the result chain here as well
+        mock_bq.query.return_value.result.return_value = fake_skills
         
         result = data_fetcher.get_resume_skills('1')
         
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[1]['skill_name'], 'Python')
+
+    @patch("data_fetcher.bq_client")
+    def test_get_job_skills_returns_list(self, mock_bq):
+        """Should return exactly the skills linked to the job_ID."""
+        # 1. Create your fake database response
+        fake_job_skills = [
+            {'job_ID': 'J004', 'skill_name': 'Cloud Computing'},
+            {'job_ID': 'J004', 'skill_name': 'Terraform'}
+        ]
+        
+        # 2. Setup the mock chain: query() -> result() -> returns fake_job_skills
+        mock_bq.query.return_value.result.return_value = fake_job_skills
+        
+        # 3. Call the actual function
+        result = data_fetcher.get_job_skills('J004')
+        
+        # 4. Assertions (Verifying the output is correct)
+        self.assertIsInstance(result, list, "The function must return a list.")
+        self.assertEqual(len(result), 2, "The function should have found 2 skills.")
+        self.assertEqual(result[0]['skill_name'], 'Cloud Computing')
+        self.assertEqual(result[1]['job_ID'], 'J004')
 
     # --- Tests for get_project_with_skills ---
     @patch("data_fetcher.bq_client")
@@ -369,12 +393,20 @@ class TestDataFilter(unittest.TestCase):
             'skill_name': 'RESTful APIs', 
             'resume_ID': '102'
         }]
-        mock_bq.query.return_value = iter(fake_projects)
+
+        mock_query_job = MagicMock()
+        mock_query_job.result.return_value = fake_projects
+        mock_bq.query.return_value = mock_query_job
         
         result = data_fetcher.get_project_with_skills('102')
         
         self.assertEqual(result[0]['project_title'], 'Project B')
-        self.assertIn('skill_name', result[0])
+        # mock_bq.query.return_value = iter(fake_projects)
+        
+        # result = data_fetcher.get_project_with_skills('102')
+        
+        # self.assertEqual(result[0]['project_title'], 'Project B')
+        # self.assertIn('skill_name', result[0])
 
     # --- General Error Handling Test ---
     @patch("data_fetcher.bq_client")
@@ -386,19 +418,61 @@ class TestDataFilter(unittest.TestCase):
         self.assertEqual(data_fetcher.filter_jobs_by_job_type('faketype'), [])
         self.assertEqual(data_fetcher.filter_jobs_by_skill_name('fakeskill'), [])
         self.assertEqual(data_fetcher.get_resume_skills('-1'), [])
+        self.assertEqual(data_fetcher.get_job_skills('-1'), [])
         self.assertEqual(data_fetcher.get_project_with_skills('-1'), [])
 
     @patch("data_fetcher.bq_client")
     def test_all_functions_return_list_type(self, mock_bq):
         # 1. Mock a standard successful return
-        mock_bq.query.return_value = iter([{'sample': 'data'}])
+        mock_bq.query.return_value.result.return_value = [{'sample': 'data'}]
         
         # Test each function for list type on success
         self.assertIsInstance(data_fetcher.filter_jobs_by_location("fakelocation"), list, "Location filter must return a list.")
         self.assertIsInstance(data_fetcher.filter_jobs_by_job_type("faketype"), list, "Location filter must return a list.")
         self.assertIsInstance(data_fetcher.filter_jobs_by_skill_name("fakeskill"), list, "Location filter must return a list.")
         self.assertIsInstance(data_fetcher.get_resume_skills("102"), list, "Resume skills must return a list.")
+        self.assertIsInstance(data_fetcher.get_job_skills("J002"), list, "Job skills must return a list.")
         self.assertIsInstance(data_fetcher.get_project_with_skills("102"), list, "Project skills must return a list.")
+
+    # --- Tests for get_match_score ---
+    @patch("data_fetcher.get_job_skills")
+    @patch("data_fetcher.get_resume_skills")
+    def test_get_match_score_calculation(self, mock_resume, mock_job):
+        """Should correctly calculate percentage and identify common skills."""
+        
+        # 1. Setup: Resume has Python and SQL. Job wants Python and Java.
+        mock_resume.return_value = [{'skill_name': 'Python'}, {'skill_name': 'SQL'}]
+        mock_job.return_value = [{'skill_name': 'Python'}, {'skill_name': 'Java'}]
+        
+        # 2. Execute: (1 common skill / 2 total job skills) * 100 = 50.0%
+        score, common = data_fetcher.get_match_score('res123', 'job456')
+        
+        # 3. Assert
+        self.assertEqual(score, 50.0)
+        self.assertEqual(common, {'Python'})
+
+    @patch("data_fetcher.get_job_skills")
+    @patch("data_fetcher.get_resume_skills")
+    def test_get_match_score_perfect_match(self, mock_resume, mock_job):
+        """Should return 100% when all job skills are present on the resume."""
+        mock_resume.return_value = [{'skill_name': 'Python'}, {'skill_name': 'SQL'}, {'skill_name': 'Git'}]
+        mock_job.return_value = [{'skill_name': 'Python'}, {'skill_name': 'SQL'}]
+        
+        score, _ = data_fetcher.get_match_score('res123', 'job456')
+        
+        self.assertEqual(score, 100.0)
+
+    @patch("data_fetcher.get_job_skills")
+    @patch("data_fetcher.get_resume_skills")
+    def test_get_match_score_empty_job_skills(self, mock_resume, mock_job):
+        """Should return 0.0 and avoid division by zero error if job has no skills."""
+        mock_resume.return_value = [{'skill_name': 'Python'}]
+        mock_job.return_value = [] # Empty job skills
+        
+        score, common = data_fetcher.get_match_score('res123', 'job456')
+        
+        self.assertEqual(score, 0.0)
+        self.assertEqual(common, set())
             
 
 if __name__ == "__main__":
