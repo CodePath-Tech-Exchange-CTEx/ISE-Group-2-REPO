@@ -745,8 +745,8 @@ def KeywordMatcher(container):
                 import time
                 time.sleep(1.5) 
                 
-                score = get_match_score("104", "J004")[0]
-                match_found = get_match_score("104", "J004")[1]
+                score = get_match_score("102", "J004")[0]
+                match_found = get_match_score("102", "J004")[1]
                 # score = 78
                 st.markdown(f"""
                     <div class="match-card">
@@ -754,7 +754,7 @@ def KeywordMatcher(container):
                         <p style='color: #666;'>Keyword Match Score</p>
                     </div>
                 """, unsafe_allow_html=True)
-                st.info("**Matches found:** Python, SQL, Communication")
+                st.info(f"**Matches found:** {match_found}")
 
         # 3. Show the warning caption only if disabled
         if is_disabled:
