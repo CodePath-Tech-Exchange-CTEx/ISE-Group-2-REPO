@@ -1,0 +1,142 @@
+﻿Usability Feedback for Feature 1 (“Add to Calendar” button)
+* Participant introduction: Introduce yourself and your team, give the participant a brief overview of their role in the user study and the persona they will be playing while interacting with the application. 
+
+
+Hello, My name is Caleb Ligon and I am a part of Codepath Intro to Software Engineering Group 2. My fellow team members are Kenneth, Femi, Natalia, and Brian and this is a mockup prototype of our streamlit app InternMatch. InternMatch is designed to provide users with a match score between their resume and specific jobs and internships they are interested in applying for. Your role is to help us test out the functionality, usability, and general flow of our application. This will provide us with helpful feedback we can use to improve the UI/UX of our application. 
+
+
+* Tasks: Provide users with a scenario in which they want to perform a given task. 
+   * Ask users to let you know when they think a task is complete. 
+   * Be sure that the wording of your task does not use keywords that might point them at how to complete it.
+
+
+For your task you want to search for at least 1 job using a keyword in the search bar or by scrolling through postings and once you have found the job you like, you want to  click apply. After you have applied, you want to navigate to the application tracker to view that job in your applications.
+
+
+* Notes: Take notes of where a user is confused, hesitant, or misunderstanding the experience. These are areas you may want to fix later.
+
+
+* The User seemed hesitant at first on how to apply viewing the prototype they said “I do not know where to click apply, I only see the job description”  
+* User also seemed hesitant on what button they would click to access the application tracker 
+
+
+* Feedback: After the participant indicates their task is complete, ask them for feedback.
+   * How easy/hard was it to complete the task given? 
+The task was difficult to complete. 
+
+
+* What confusions were there? Why were they confused?
+The user was confused on how to actually apply to the job posting, and what button gets them to the application status tracker once they have applied to jobs.
+
+
+   * What could be improved?
+Add a button either in the job description card so users can apply either on the InternMatch App or directly on the company site. Make the button to access the application status tracker much more clear potentially with a title when you hover over the button
+
+
+* Results: After the test, list out the issues/challenges that participants had, hypothesize the reason for each, and list your chosen remedy to improve it. 
+   * Include participant quotes in your explanation of the problem.
+
+
+        After the test the main issues were:
+* Not having a clear way to apply to jobs visible in the prototype
+* Not knowing which button leads to the application tracker.
+        
+I hypothesize that these were issues because on the main page there was no clear button that shows how to apply or a link that showed it led to an application and because it was unclear what button leads to applications status tracker. The user said “I know how to search for jobs, but I don’t understand how to click apply”.
+
+
+* Updates: Redraw your prototypes to address participant feedback.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Usability Feedback Feature 2 (“Add to Favorites” button)
+
+
+* Participant introduction: Hello, my name is Natalia. I am part of Codepath Intro to Software Engineering Group 2, working alongside Caleb, Kenneth, Femi, and Brian. We are developing InternMatch, a Streamlit app that matches your resume to job postings. Today, you will help us test the flow for managing jobs you are interested in. Please think out loud as you interact with the prototype.
+
+
+Tasks:
+* Scenario: You are browsing through several job listings and find a Backend Software Engineer position at Tech Solutions Inc. that you really like, but you aren't ready to apply just yet.
+* Action: Find a way to save this specific job so you can find it easily later.
+* Verification: Navigate to the area of the app where your saved selections are kept and confirm the job is there.
+
+
+-This is feedback from two other CodePath Tech Exchange students
+
+
+Notes:
+* Icon Recognition: Participants successfully identified the bookmark icon as the method to save a job.
+* Navigation Confusion: When asked where they would look for saved items, there was significant hesitation. Users pointed to three different areas: the top three lines menu, the settings "gear" icon, and the profile icon. One user compared the expected behavior to Instagram, suggesting they might look in "settings" or their "profile" because saved jobs are part of their personal info.
+* Deletion Concerns: Regarding the "Saved Jobs" table, the user expressed a need for a confirmation step before deleting, noting that on other platforms like Instagram, "once you remove it, it's gone and you lose it". The user noted that while they are more deliberate with their clicks on a desktop, searching for specific features on a mobile interface becomes frustrating if the searching for the job again is not easy.
+
+
+
+
+Feedback: 
+* Ease of Use: While finding the "Save" button was easy, finding the location of the saved jobs was less intuitive.
+* Confusions: The user was unsure if the top-right menu was a "task bar" or something else. There is no singular, obvious path to the "Saved Jobs" list, leading the user to guess multiple icons (gear, profile, menu).
+* Improvements: The user explicitly suggested a "confirm" button for deletions to avoid accidental loss of data.
+
+
+Results: 
+Issue 1: Navigation and Icon Ambiguity 
+* User Quote: "I don’t know if the top part is for opening the task bar, but if it is, I’d look there first... The little gear because of Instagram, they save it in settings... Finally, my profile  beacuse is part of my info."
+* Hypothesis: The navigation icons (gear, home, profile) lack descriptive labels, forcing users to rely on trial-and-error or mental models from other social media apps.
+* Remedy: Add text labels under each navigation icon (e.g., "Settings," "Home," "Profile") or implement a toast notification or pop-up message that appears immediately after saving a job, stating 'This job was saved in [Profile Icon]', specifically including the icon to visually guide the user to the saved jobs location.
+Issue 2: Accidental Deletion Risk on Mobile
+* User Quote: "I would say 'confirm pop-up' in my case with Instagram saves, once you remove it, it’s gone and you lose it. On a computer, you are more aware of where you’re clicking, but on a phone, it’s kinda annoying if you have to search for it after."
+* Hypothesis: Because users are less precise with their touches on mobile compared to a computer, a single-tap deletion via the trash icon is too high-risk for saving important job data.
+* Remedy: Implement an "Are you sure?" confirmation pop-up or an "Undo" toast notification to provide a safety net for accidental touches on smaller screens.
+
+
+
+
+Next Updates:
+* Based on participant feedback, we might have to add a confirmation pop-up for the delete action in the "Saved Jobs" table.
+* We will ensure the Profile icon is more clearly associated with "Saved Jobs" by potentially adding a small badge or label or the toast notification, as the user identified this as part of their "info".
