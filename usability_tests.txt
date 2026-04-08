@@ -1,4 +1,4 @@
-﻿Usability Feedback for Feature 1 (“Add to Calendar” button)
+﻿Usability Feedback for Feature 1 (“Application Status Tracker” button)
 * Participant introduction: Introduce yourself and your team, give the participant a brief overview of their role in the user study and the persona they will be playing while interacting with the application. 
 
 
