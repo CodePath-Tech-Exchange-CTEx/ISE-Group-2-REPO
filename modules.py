@@ -11,9 +11,10 @@ from internals import create_component
 import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, GenerationConfig
 from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline
 import pdfplumber
+
 
 
 PROJECT_ID = "oluwanifemi-elias-hu"   #TODO: Check if team can utilize the api with it being under my project
@@ -30,6 +31,8 @@ def get_gemini_model():
     # Using Gemini 1.5 Pro for its high reasoning capabilities and large context window,
     # which is ideal for comparing long resumes against detailed job descriptions.
     return GenerativeModel("gemini-2.5-pro")
+
+
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -51,8 +54,7 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
-########## code change ##########
-def NavBar():
+def nav_bar():
     st.markdown("""
     <style>
 
@@ -116,10 +118,11 @@ def NavBar():
             if st.button("👤", key="nav_profile_btn"):
                 st.session_state.page = "profile"
                 st.rerun()
+        
 
 
 
-def GeminiChatbot(container):
+def gemini_chatbot(container):
     ############
     # Main AI logic. It combines BigQuery metadata, extracted Resume text, and 
     # the current job description to provide tailored advice
@@ -257,32 +260,11 @@ def GeminiChatbot(container):
 
 
 
+
 #MODULE 4 User Button + Search Bar:
 def CompanySearch(container):
     
-    # Keeping the border style for the search bar
-    st.markdown("""
-        <style>
-            .stTextInput > div > div {
-                border: 2px solid black !important;
-                border-radius: 30px !important;
-            }
-            /* Styling the user button to be circular */
-            .user-btn {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 45px;
-                width: 45px;
-                border: 2px solid black;
-                border-radius: 50%;
-                font-size: 20px;
-                cursor: pointer;
-                background-color: white;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
+   
     with container:
         # Create two columns: 1 for the icon, 1 for the search 
         col_icon, col_search = st.columns([1, 10])
@@ -312,30 +294,6 @@ def CompanySearch(container):
 
 def ProfilePage(container):
     # CSS for centered elements and labels
-    st.markdown("""
-        <style>
-            .resume-section {
-                padding: 20px;
-                margin-top: 10px;
-                text-align: center;
-            }
-
-            .upload-label {
-                color: black;
-                font-weight: bold;
-                margin-bottom: 5px;
-                display: block;
-                text-align: center;
-            }
-
-            .st-key-profile_container span{
-                color: black;
-            
-            }
-
-
-        </style>
-    """, unsafe_allow_html=True)
 
     user_info = get_user_profile(1)
 
@@ -625,52 +583,7 @@ def ResumeUploader(container):
     Module 5: Function 1 - Upload Resume with High-Contrast Button Styling
     """
     # Targeting the internal Streamlit upload button and container
-    st.markdown("""
-        <style>
-            /* 1. Style the main uploader box */
-            [data-testid="stFileUploader"] {
-                border-radius: 20px;
-                padding: 10px;
-                background-color: #ffffff;
-                box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e5e7eb;
-            }
-
-            /* 2. Target the 'Browse files' button specifically */
-            [data-testid="stFileUploader"] section button {
-                background-color: #000000 !important;
-                color: white !important;
-                border-radius: 10px !important;
-                border: none !important;
-                padding: 0.5rem 1rem !important;
-                transition: 0.3s;
-            }
-
-            /* FIX: Target the filename and file size text */
-            [data-testid="stFileUploaderFileName"], 
-            [data-testid="stFileUploaderFileData"] {
-                color: #000000 !important;
-                font-weight: 500 !important;
-            }
-
-            /* FIX: Target the 'Uploaded' checkmark and status text */
-            [data-testid="stFileUploaderFileStatus"] {
-                color: #000000 !important;
-            }
-
-            /* 3. Add a hover effect for the button */
-            [data-testid="stFileUploader"] section button:hover {
-                background-color: #333333 !important;
-                box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-            }
-
-            /* 4. Style the text instruction (e.g., 'Limit 200MB per file') */
-            [data-testid="stFileUploader"] section {
-                color: #000000;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
+    
     with container:
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 10px;'>Upload Resume</p>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
@@ -706,36 +619,6 @@ def KeywordMatcher(container):
     Module 5: Function 2 - Compare Keywords with Styling
     """
     # Custom CSS for the match results area
-    st.markdown("""
-        <style>
-            /* 1. Style for the ENABLED (Active) button */
-            div.stButton > button[kind="primary"] {
-                background-color: #000000 !important;
-                color: white !important;
-                border: 2px solid #000000 !important;
-                border-radius: 10px !important;
-                transition: 0.3s;
-            }
-
-            /* 2. Style for the DISABLED button - MAKING IT VISIBLE */
-            div.stButton > button:disabled {
-                background-color: #f0f2f6 !important; /* Light gray background */
-                color: #808080 !important;          /* Darker gray text for contrast */
-                border: 2px dashed #cccccc !important; /* Dashed border to show it's 'inactive' */
-                cursor: not-allowed !important;
-                opacity: 1 !important;              /* Prevent Streamlit from fading it out too much */
-            }
-            
-            .match-card {
-                background-color: white;
-                border: 2px solid #000000;
-                padding: 20px;
-                border-radius: 15px;
-                text-align: center;
-                margin-top: 10px;
-            }
-        </style>
-    """, unsafe_allow_html=True)
 
     with container:
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 5px;'>Compare to Job Description </p>", unsafe_allow_html=True)
@@ -779,3 +662,5 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         st.error(f"PDF Error: {e}")
     return text
+
+    

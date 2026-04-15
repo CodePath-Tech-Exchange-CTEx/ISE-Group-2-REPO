@@ -7,7 +7,7 @@
 
 import streamlit as st
 
-from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
+from modules import gemini_chatbot, nav_bar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
 from data_fetcher import get_jobs
 
 #init_db() #initialize database on startup
@@ -22,13 +22,12 @@ st.set_page_config(
 )
 
 
-########## code change ##########
+
 # Initialize navigation state
 if "page" not in st.session_state:
     st.session_state.page = "home"
-#################################
 
-#style font color of the app to be black and background color to white
+
 st.markdown(
     """
     <style>
@@ -40,10 +39,12 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 # App container
 def main_container():
     # Create the master container
     container = st.container()
+
 
 
     # Put any initial content inside it
