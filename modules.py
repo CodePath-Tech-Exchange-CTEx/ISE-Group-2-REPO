@@ -54,7 +54,7 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
-def nav_bar():
+def NavBar():
     st.markdown("""
     <style>
 
@@ -122,7 +122,7 @@ def nav_bar():
 
 
 
-def gemini_chatbot(container):
+def GeminiChatbot(container):
     ############
     # Main AI logic. It combines BigQuery metadata, extracted Resume text, and 
     # the current job description to provide tailored advice
@@ -228,10 +228,16 @@ def gemini_chatbot(container):
                                 f"Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
                             )
 
+
                             # 5. VERTEX AI GENERATION
+                            generation_config = {
+                                "max_output_tokens": 2000,  # Limits response to ~450 words
+                                "temperature": 0.7,        # Balanced creativity
+                                "top_p": 0.95,
+                            }
                             # We use 'model' defined at the top of modules.py via vertexai.init.
                             # The response is generated based on the grounded data provided in the prompt.
-                            response = model.generate_content(full_prompt)
+                            response = model.generate_content(full_prompt, generation_config=generation_config)
                             ai_response = response.text
                             
                             # Display AI response in the UI

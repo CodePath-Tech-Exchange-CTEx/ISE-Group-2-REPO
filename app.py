@@ -7,7 +7,7 @@
 
 import streamlit as st
 
-from modules import gemini_chatbot, nav_bar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
 from data_fetcher import get_jobs
 
 #init_db() #initialize database on startup
