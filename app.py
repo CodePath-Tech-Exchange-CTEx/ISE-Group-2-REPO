@@ -7,7 +7,7 @@
 
 import streamlit as st
 
-from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs, application_tracker
 from data_fetcher import get_jobs
 
 #init_db() #initialize database on startup
@@ -107,6 +107,9 @@ if __name__ == '__main__':
         with col_right:
             KeywordMatcher(st.container())
 
+    elif st.session_state.page == "tracker":
+        application_tracker(app_container)
+           
         # Render Profile Page
     elif st.session_state.page == "profile":
         ProfilePage(app_container)

@@ -376,5 +376,77 @@ class TestSearchIntegration(unittest.TestCase):
         # 5. Final Assertion
         self.assertIn("Google", rendered_content)
 
+@unittest.skip("Blocked by Streamlit AppTest limitation in CI")
+class TestApplicationTracker(unittest.TestCase):
+    def setUp(self):
+        """Initialize and navigate to tracker page."""
+        self.at = AppTest.from_file("app.py").run()
+        # Ensure session state is clean
+        self.at.session_state.job_tracker = []
+        self.at.session_state.page = "tracker"
+        self.at.run()
+
+    def test_add_job_flow(self):
+        """Test adding a job with a title and date."""
+        # 1. Fill out the form inside the expander
+        self.at.text_input(key="add_job_form_Job Title").set_value("Frontend Engineer at Meta")
+        
+        # Streamlit testing handles dates as datetime.date objects
+        import datetime
+        test_date = datetime.date(2026, 4, 16)
+        self.at.date_input(key="add_job_form_Date Applied").set_value(test_date)
+        
+        # 2. Submit the form
+        self.at.button(key="add_job_form_Add to List").click().run()
+
+        # 3. Assertions
+        # Check if added to session state
+        tracker_data = self.at.session_state.job_tracker
+        self.assertEqual(len(tracker_data), 1)
+        self.assertEqual(tracker_data[0]['title'], "Frontend Engineer at Meta")
+        self.assertEqual(tracker_data[0]['date'], "2026-04-16")
+        
+        # Check if displayed on screen (using markdown or success message)
+        self.assertTrue(any("Frontend Engineer at Meta" in m.value for m in self.at.markdown))
+
+    def test_status_update(self):
+        """Test if changing the status selectbox updates session state."""
+        # 1. Manually inject a job into session state
+        self.at.session_state.job_tracker = [{
+            "id": 0,
+            "title": "Backend Dev at Apple",
+            "date": "2026-01-01",
+            "status": "Applied"
+        }]
+        self.at.run()
+
+        # 2. Find status selectbox and change value to 'Interview'
+        status_box = self.at.selectbox(key="status_0")
+        status_box.select("Interview").run()
+
+        # 3. Assert state updated
+        self.assertEqual(self.at.session_state.job_tracker[0]['status'], "Interview")
+
+    def test_delete_job(self):
+        """Test if clicking the trash icon removes the job."""
+        # 1. Inject two jobs
+        self.at.session_state.job_tracker = [
+            {"id": 0, "title": "Job A", "date": "2026-01-01", "status": "Applied"},
+            {"id": 1, "title": "Job B", "date": "2026-01-01", "status": "Applied"}
+        ]
+        self.at.run()
+
+        # 2. Click delete on the first one
+        self.at.button(key="delete_0").click().run()
+
+        # 3. Assert only one job remains
+        self.assertEqual(len(self.at.session_state.job_tracker), 1)
+        self.assertEqual(self.at.session_state.job_tracker[0]['title'], "Job B")
+
+
+
+
+
+
 if __name__ == "__main__":
     unittest.main()

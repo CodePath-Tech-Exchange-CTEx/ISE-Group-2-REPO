@@ -14,8 +14,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline, delete_saved_job
 import pdfplumber
-
-
+import datetime
 
 PROJECT_ID = "oluwanifemi-elias-hu"   #TODO: Check if team can utilize the api with it being under my project
 LOCATION = "us-central1"
@@ -31,8 +30,6 @@ def get_gemini_model():
     # Using Gemini 1.5 Pro for its high reasoning capabilities and large context window,
     # which is ideal for comparing long resumes against detailed job descriptions.
     return GenerativeModel("gemini-2.5-pro")
-
-
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -54,6 +51,7 @@ def display_my_custom_component(value):
     create_component(data, html_file_name)
 
 
+########## code change ##########
 def NavBar():
     st.markdown("""
     <style>
@@ -61,7 +59,7 @@ def NavBar():
     /*Button styling*/
     .st-key-nav_container .st-key-nav_home_btn button,
     .st-key-nav_container .st-key-nav_profile_btn button,
-    .st-key-nav_container .st-key-nav_settings_btn button
+    .st-key-nav_container .st-key-nav_settings_btn button 
     .st-key-nav_container .st-key-nav_tracker_btn button {
         background: inherit !important;
         font-size: 24px !important;
@@ -119,11 +117,10 @@ def NavBar():
             if st.button("👤", key="nav_profile_btn"):
                 st.session_state.page = "profile"
                 st.rerun()
-        with col4:
+        with col4: 
             if st.button("📋", key="nav_tracker_btn"): # Using a chart icon for the tracker
                 st.session_state.page = "tracker"
                 st.rerun()
-
 
 
 def GeminiChatbot(container):
@@ -232,16 +229,10 @@ def GeminiChatbot(container):
                                 f"Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
                             )
 
-
                             # 5. VERTEX AI GENERATION
-                            generation_config = {
-                                "max_output_tokens": 2000,  # Limits response to ~450 words
-                                "temperature": 0.7,        # Balanced creativity
-                                "top_p": 0.95,
-                            }
                             # We use 'model' defined at the top of modules.py via vertexai.init.
                             # The response is generated based on the grounded data provided in the prompt.
-                            response = model.generate_content(full_prompt, generation_config=generation_config)
+                            response = model.generate_content(full_prompt)
                             ai_response = response.text
                             
                             # Display AI response in the UI
@@ -270,11 +261,32 @@ def GeminiChatbot(container):
 
 
 
-
 #MODULE 4 User Button + Search Bar:
 def CompanySearch(container):
     
-   
+    # Keeping the border style for the search bar
+    st.markdown("""
+        <style>
+            .stTextInput > div > div {
+                border: 2px solid black !important;
+                border-radius: 30px !important;
+            }
+            /* Styling the user button to be circular */
+            .user-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 45px;
+                width: 45px;
+                border: 2px solid black;
+                border-radius: 50%;
+                font-size: 20px;
+                cursor: pointer;
+                background-color: white;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     with container:
         # Create two columns: 1 for the icon, 1 for the search 
         col_icon, col_search = st.columns([1, 10])
@@ -304,6 +316,30 @@ def CompanySearch(container):
 
 def ProfilePage(container):
     # CSS for centered elements and labels
+    st.markdown("""
+        <style>
+            .resume-section {
+                padding: 20px;
+                margin-top: 10px;
+                text-align: center;
+            }
+
+            .upload-label {
+                color: black;
+                font-weight: bold;
+                margin-bottom: 5px;
+                display: block;
+                text-align: center;
+            }
+
+            .st-key-profile_container span{
+                color: black;
+            
+            }
+
+
+        </style>
+    """, unsafe_allow_html=True)
 
     user_info = get_user_profile(1)
 
@@ -593,7 +629,52 @@ def ResumeUploader(container):
     Module 5: Function 1 - Upload Resume with High-Contrast Button Styling
     """
     # Targeting the internal Streamlit upload button and container
-    
+    st.markdown("""
+        <style>
+            /* 1. Style the main uploader box */
+            [data-testid="stFileUploader"] {
+                border-radius: 20px;
+                padding: 10px;
+                background-color: #ffffff;
+                box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.08);
+                border: 1px solid #e5e7eb;
+            }
+
+            /* 2. Target the 'Browse files' button specifically */
+            [data-testid="stFileUploader"] section button {
+                background-color: #000000 !important;
+                color: white !important;
+                border-radius: 10px !important;
+                border: none !important;
+                padding: 0.5rem 1rem !important;
+                transition: 0.3s;
+            }
+
+            /* FIX: Target the filename and file size text */
+            [data-testid="stFileUploaderFileName"], 
+            [data-testid="stFileUploaderFileData"] {
+                color: #000000 !important;
+                font-weight: 500 !important;
+            }
+
+            /* FIX: Target the 'Uploaded' checkmark and status text */
+            [data-testid="stFileUploaderFileStatus"] {
+                color: #000000 !important;
+            }
+
+            /* 3. Add a hover effect for the button */
+            [data-testid="stFileUploader"] section button:hover {
+                background-color: #333333 !important;
+                box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+            }
+
+            /* 4. Style the text instruction (e.g., 'Limit 200MB per file') */
+            [data-testid="stFileUploader"] section {
+                color: #000000;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     with container:
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 10px;'>Upload Resume</p>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
@@ -629,6 +710,36 @@ def KeywordMatcher(container):
     Module 5: Function 2 - Compare Keywords with Styling
     """
     # Custom CSS for the match results area
+    st.markdown("""
+        <style>
+            /* 1. Style for the ENABLED (Active) button */
+            div.stButton > button[kind="primary"] {
+                background-color: #000000 !important;
+                color: white !important;
+                border: 2px solid #000000 !important;
+                border-radius: 10px !important;
+                transition: 0.3s;
+            }
+
+            /* 2. Style for the DISABLED button - MAKING IT VISIBLE */
+            div.stButton > button:disabled {
+                background-color: #f0f2f6 !important; /* Light gray background */
+                color: #808080 !important;          /* Darker gray text for contrast */
+                border: 2px dashed #cccccc !important; /* Dashed border to show it's 'inactive' */
+                cursor: not-allowed !important;
+                opacity: 1 !important;              /* Prevent Streamlit from fading it out too much */
+            }
+            
+            .match-card {
+                background-color: white;
+                border: 2px solid #000000;
+                padding: 20px;
+                border-radius: 15px;
+                text-align: center;
+                margin-top: 10px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
     with container:
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 5px;'>Compare to Job Description </p>", unsafe_allow_html=True)
@@ -672,3 +783,184 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         st.error(f"PDF Error: {e}")
     return text
+
+@st.dialog("Confirm Deletion")
+def confirm_delete_dialog(job):
+    st.write(f"Are you sure you want to remove **{job['position']}** at **{job['company']}** from your saved jobs?")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun() 
+            
+    with col2:
+        if st.button("Yes, Delete", type="primary", use_container_width=True):
+            
+            # Fetch the current user ID (using the default 'user1' from your app.py if not set)
+            current_user_id = st.session_state.get('user_id', '1')
+            
+            with st.spinner("Deleting..."):
+                # Call the database function
+                db_success = delete_saved_job(current_user_id, job["id"])
+                
+                if db_success:
+                    # Database deletion worked! Now update the UI.
+                    st.session_state.saved_jobs = [j for j in st.session_state.saved_jobs if j["id"] != job["id"]]
+                    st.rerun() 
+                else:
+                    # Something went wrong in the DB
+                    st.error("⚠️ Failed to delete from the database. Please try again later.")
+
+    
+
+def SavedJobs(container):
+    # 2. Setup mock data if it doesn't exist
+    if 'saved_jobs' not in st.session_state:
+        st.session_state.saved_jobs = [
+            {"id": 1, "company": "Tech Solutions", "position": "Backend Software Developer", "deadline": "10/04/2026"},
+            {"id": 2, "company": "Cloud Native Solutions", "position": "DevOps Engineer", "deadline": "10/14/2026"},
+            {"id": 3, "company": "Data Insights Corp.", "position": "Data Engineer", "deadline": "11/25/2026"}
+        ]
+
+    # 3. Inject CSS to style the specific container and the buttons inside it
+    st.markdown("""
+        <style>
+        /* Target the specific container key */
+        div[data-testid="stVerticalBlock"] > div.st-key-saved_jobs_block {
+            background-color: #24252C;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Style the Streamlit buttons to look like transparent icons */
+        div.st-key-saved_jobs_block button {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 22px !important;
+            color: white !important;
+            padding: 0 !important;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        div.st-key-saved_jobs_block button:hover {
+            color: #ff4b4b !important;
+        }
+
+        /* Custom divider for rows */
+        hr.table-divider {
+            border: 0;
+            border-top: 1px solid #4f5058;
+            margin: 0px 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with container:
+        st.title("Saved Jobs")
+        # Wrap everything in a key-targeted container so the CSS only affects this table
+        table_container = st.container(key="saved_jobs_block")
+        
+        with table_container:
+            if not st.session_state.saved_jobs:
+                st.markdown("<p style='text-align: center; color: #888;'>No saved jobs.</p>", unsafe_allow_html=True)
+                return
+
+            # --- Table Header ---
+            col1, col2, col3, col4 = st.columns([2.5, 3.5, 2.5, 0.5])
+            with col1: st.markdown("<p style='font-weight: bold;'>Company</p>", unsafe_allow_html=True)
+            with col2: st.markdown("<p style='font-weight: bold;'>Position</p>", unsafe_allow_html=True)
+            with col3: st.markdown("<p style='font-weight: bold;'>Deadline</p>", unsafe_allow_html=True)
+            with col4: st.empty() # Placeholder for the trash icon column
+
+            st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
+
+            # --- Table Rows ---
+            for i, job in enumerate(st.session_state.saved_jobs):
+                c1, c2, c3, c4 = st.columns([2.5, 3.5, 2.5, 0.5], vertical_alignment="center")
+                
+                with c1: st.markdown(f"<p>{job['company']}</p>", unsafe_allow_html=True)
+                with c2: st.markdown(f"<p>{job['position']}</p>", unsafe_allow_html=True)
+                with c3: st.markdown(f"<p>{job['deadline']}</p>", unsafe_allow_html=True)
+                with c4: 
+                    # The delete button logic
+                    if st.button("🗑️", key=f"del_job_{job['id']}"):
+                        confirm_delete_dialog(job)
+
+                # Add a divider under every row EXCEPT the last one
+                if i < len(st.session_state.saved_jobs) - 1:
+                    st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
+
+
+def application_tracker(container):
+    """
+    Module for tracking job applications. 
+    Allows users to add, edit status, and delete job applications.
+    """
+    with container:
+        st.title("📋 Application Status Tracker")
+        st.write("Keep track of your job hunt progress below.")
+
+        if 'job_tracker' not in st.session_state:
+            st.session_state.job_tracker = []
+
+        # 1. CREATE: Section to add a new job
+        with st.expander("➕ Add New Job to Tracker", expanded=False):
+            with st.form("add_job_form", clear_on_submit=True):
+                new_job = st.text_input("Job Title", placeholder="e.g. Data Scientist at Google")
+                
+                # --- NEW: Date Input Field ---
+                applied_date = st.date_input("Date Applied", value=datetime.date.today())
+                
+                submit_job = st.form_submit_button("Add to List")
+                
+                if submit_job and new_job:
+                    st.session_state.job_tracker.append({
+                        "id": len(st.session_state.job_tracker),
+                        "title": new_job,
+                        "date": applied_date.strftime("%Y-%m-%d"), # Store as string
+                        "status": "Applied"
+                    })
+                    st.success(f"Added '{new_job}'!")
+                    st.rerun()
+
+        st.divider()
+
+        # 2. LIST & EDIT/DELETE: Display the jobs
+        if not st.session_state.job_tracker:
+            st.info("No applications tracked yet. Use the button above to start!")
+        else:
+            for index, job in enumerate(st.session_state.job_tracker):
+                with st.container(border=True):
+                    # Adjusted column ratios to fit the date
+                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**{job['title']}**")
+                    
+                    with col2:
+                        # --- DISPLAY: The manual date ---
+                        st.caption(f"📅 Applied: {job['date']}")
+                    
+                    with col3:
+                        status_options = ["Applied", "Interview", "Rejected", "Accepted"]
+                        current_index = status_options.index(job['status'])
+                        
+                        new_status = st.selectbox(
+                            "Status",
+                            options=status_options,
+                            index=current_index,
+                            key=f"status_{index}",
+                            label_visibility="collapsed"
+                        )
+                        
+                        if new_status != job['status']:
+                            st.session_state.job_tracker[index]['status'] = new_status
+                            st.toast(f"Updated {job['title']} to {new_status}!")
+
+                    with col4:
+                        if st.button("🗑️", key=f"delete_{index}", help="Delete this application"):
+                            st.session_state.job_tracker.pop(index)
+                            st.rerun()
