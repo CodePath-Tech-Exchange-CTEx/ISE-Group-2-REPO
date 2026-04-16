@@ -72,7 +72,30 @@ class TestGeminiChatbot(unittest.TestCase):
             kwargs = mock_save_chat.call_args.kwargs
             self.assertEqual(kwargs['user_prompt'], "Does my resume match?") 
 
+class TestApplyWindow(unittest.TestCase):
 
+    @patch("modules.st.link_button")
+    @patch("modules.st.write")
+    @patch("modules.st.markdown")
+    def test_render_apply_window_contents(self, mock_markdown, mock_write, mock_link_button):
+        job = {
+            "title": "Software Engineer Intern",
+            "company": "DoubleVerify",
+            "job_link": "https://example.com/apply/123"
+        }
+
+        modules.render_apply_window_contents(job)
+
+        mock_markdown.assert_called_once_with("### Software Engineer Intern")
+        mock_write.assert_called_once_with(
+            "Apply for **DoubleVerify** via the official link below:"
+        )
+        mock_link_button.assert_called_once_with(
+            "Go to Application Site",
+            "https://example.com/apply/123",
+            type="primary",
+            use_container_width=True
+        )
 
 #fake container that behaves like a real Streamlit container, but does nothing.
 class DummyContainer:

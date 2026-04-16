@@ -113,6 +113,7 @@ def get_jobs_from_bigquery():
         j.title, 
         j.description, 
         j.location, 
+        j.job_link,
         ARRAY_AGG(DISTINCT s.skill_name IGNORE NULLS) AS skills
         FROM `{PROJECT_ID}.{DATABASE_ID}.JobInformation` j
         LEFT JOIN `{PROJECT_ID}.{DATABASE_ID}.jobSkillsTable` js
@@ -124,7 +125,8 @@ def get_jobs_from_bigquery():
         j.company_name, 
         j.title, 
         j.description, 
-        j.location
+        j.location,
+        j.job_link
         LIMIT 20
         """
     
@@ -139,6 +141,7 @@ def get_jobs_from_bigquery():
                 "title": row.title,
                 "description": row.description,
                 "location": row.location,
+                "link": row.job_link,
                 "skills": list(row.skills) if row.skills else []
             })
         return jobs
