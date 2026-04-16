@@ -81,7 +81,7 @@ class TestApplyWindow(unittest.TestCase):
         job = {
             "title": "Software Engineer Intern",
             "company": "DoubleVerify",
-            "job_link": "https://example.com/apply/123"
+            "link": "https://example.com/apply/123"
         }
 
         modules.render_apply_window_contents(job)
