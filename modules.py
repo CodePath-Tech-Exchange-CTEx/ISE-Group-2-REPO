@@ -11,8 +11,8 @@ from internals import create_component
 import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
-from vertexai.generative_models import GenerativeModel, GenerationConfig
-from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline
+from vertexai.generative_models import GenerativeModel
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline, delete_saved_job
 import pdfplumber
 
 
@@ -672,73 +672,3 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         st.error(f"PDF Error: {e}")
     return text
-
-
-def application_tracker(container):
-    """
-    Module for tracking job applications. 
-    Allows users to add, edit status, and delete job applications.
-    """
-    with container:
-        st.title("📋 Application Status Tracker")
-        st.write("Keep track of your job hunt progress below.")
-
-        # 1. Initialize Session State for Data Storage
-        # In a real app, this would eventually connect to BigQuery
-        if 'job_tracker' not in st.session_state:
-            st.session_state.job_tracker = []
-
-        # 2. CREATE: Section to add a new job
-        with st.expander("➕ Add New Job to Tracker", expanded=False):
-            with st.form("add_job_form", clear_on_submit=True):
-                new_job = st.text_input("Job Title", placeholder="e.g. Data Scientist at Google")
-                submit_job = st.form_submit_button("Add to List")
-                
-                if submit_job and new_job:
-                    # Append a new dictionary to our tracker list
-                    st.session_state.job_tracker.append({
-                        "id": len(st.session_state.job_tracker),
-                        "title": new_job,
-                        "status": "Applied"
-                    })
-                    st.success(f"Added '{new_job}'!")
-                    st.rerun()
-
-        st.divider()
-
-        # 3. LIST & EDIT/DELETE: Display the jobs
-        if not st.session_state.job_tracker:
-            st.info("No applications tracked yet. Use the button above to start!")
-        else:
-            # We loop through the list in reverse to show newest first
-            for index, job in enumerate(st.session_state.job_tracker):
-                # Create a clean UI card for each job
-                with st.container(border=True):
-                    col1, col2, col3 = st.columns([3, 2, 1])
-                    
-                    with col1:
-                        st.markdown(f"**{job['title']}**")
-                    
-                    with col2:
-                        # STATUS UPDATE: Selectbox for editing status
-                        status_options = ["Applied", "Interview", "Rejected", "Accepted"]
-                        current_index = status_options.index(job['status'])
-                        
-                        new_status = st.selectbox(
-                            "Status",
-                            options=status_options,
-                            index=current_index,
-                            key=f"status_{index}",
-                            label_visibility="collapsed"
-                        )
-                        
-                        # If status changes, update the session state
-                        if new_status != job['status']:
-                            st.session_state.job_tracker[index]['status'] = new_status
-                            st.toast(f"Updated {job['title']} to {new_status}!")
-
-                    with col3:
-                        # DELETE: Button to remove the job
-                        if st.button("🗑️", key=f"delete_{index}", help="Delete this application"):
-                            st.session_state.job_tracker.pop(index)
-                            st.rerun()    

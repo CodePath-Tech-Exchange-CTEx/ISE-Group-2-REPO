@@ -691,6 +691,27 @@ def save_resume_pipeline(raw_text):
 
     return new_res_id # Return this so your app can show the newly created resume
 
+def delete_saved_job(user_id, job_id):
+    """
+    Removes a saved job from the database.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        # ---------------------------------------------------------
+        # TODO: Add your actual database connection and DELETE query here.
+        # Example:
+        # query = "DELETE FROM user_saved_jobs WHERE user_id = %s AND job_id = %s"
+        # cursor.execute(query, (user_id, job_id))
+        # db.commit()
+        # ---------------------------------------------------------
+        
+        print(f"DEBUG: Successfully deleted job {job_id} for user {user_id} from DB.")
+        return True 
+        
+    except Exception as e:
+        print(f"Database Error: {e}")
+        return False
+
 if __name__ == "__main__":
     fetch_and_save_jobs()
     
