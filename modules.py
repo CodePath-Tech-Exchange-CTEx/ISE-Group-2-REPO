@@ -12,7 +12,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
-from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline, delete_saved_job
 import pdfplumber
 
 
@@ -779,3 +779,112 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         st.error(f"PDF Error: {e}")
     return text
+
+@st.dialog("Confirm Deletion")
+def confirm_delete_dialog(job):
+    st.write(f"Are you sure you want to remove **{job['position']}** at **{job['company']}** from your saved jobs?")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun() 
+            
+    with col2:
+        if st.button("Yes, Delete", type="primary", use_container_width=True):
+            
+            # Fetch the current user ID (using the default 'user1' from your app.py if not set)
+            current_user_id = st.session_state.get('user_id', '1')
+            
+            with st.spinner("Deleting..."):
+                # Call the database function
+                db_success = delete_saved_job(current_user_id, job["id"])
+                
+                if db_success:
+                    # Database deletion worked! Now update the UI.
+                    st.session_state.saved_jobs = [j for j in st.session_state.saved_jobs if j["id"] != job["id"]]
+                    st.rerun() 
+                else:
+                    # Something went wrong in the DB
+                    st.error("⚠️ Failed to delete from the database. Please try again later.")
+
+    
+
+def SavedJobs(container):
+    # 2. Setup mock data if it doesn't exist
+    if 'saved_jobs' not in st.session_state:
+        st.session_state.saved_jobs = [
+            {"id": 1, "company": "Tech Solutions", "position": "Backend Software Developer", "deadline": "10/04/2026"},
+            {"id": 2, "company": "Cloud Native Solutions", "position": "DevOps Engineer", "deadline": "10/14/2026"},
+            {"id": 3, "company": "Data Insights Corp.", "position": "Data Engineer", "deadline": "11/25/2026"}
+        ]
+
+    # 3. Inject CSS to style the specific container and the buttons inside it
+    st.markdown("""
+        <style>
+        /* Target the specific container key */
+        div[data-testid="stVerticalBlock"] > div.st-key-saved_jobs_block {
+            background-color: #24252C;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Style the Streamlit buttons to look like transparent icons */
+        div.st-key-saved_jobs_block button {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 22px !important;
+            color: white !important;
+            padding: 0 !important;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        div.st-key-saved_jobs_block button:hover {
+            color: #ff4b4b !important;
+        }
+
+        /* Custom divider for rows */
+        hr.table-divider {
+            border: 0;
+            border-top: 1px solid #4f5058;
+            margin: 0px 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with container:
+        st.title("Saved Jobs")
+        # Wrap everything in a key-targeted container so the CSS only affects this table
+        table_container = st.container(key="saved_jobs_block")
+        
+        with table_container:
+            if not st.session_state.saved_jobs:
+                st.markdown("<p style='text-align: center; color: #888;'>No saved jobs.</p>", unsafe_allow_html=True)
+                return
+
+            # --- Table Header ---
+            col1, col2, col3, col4 = st.columns([2.5, 3.5, 2.5, 0.5])
+            with col1: st.markdown("<p style='font-weight: bold;'>Company</p>", unsafe_allow_html=True)
+            with col2: st.markdown("<p style='font-weight: bold;'>Position</p>", unsafe_allow_html=True)
+            with col3: st.markdown("<p style='font-weight: bold;'>Deadline</p>", unsafe_allow_html=True)
+            with col4: st.empty() # Placeholder for the trash icon column
+
+            st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
+
+            # --- Table Rows ---
+            for i, job in enumerate(st.session_state.saved_jobs):
+                c1, c2, c3, c4 = st.columns([2.5, 3.5, 2.5, 0.5], vertical_alignment="center")
+                
+                with c1: st.markdown(f"<p>{job['company']}</p>", unsafe_allow_html=True)
+                with c2: st.markdown(f"<p>{job['position']}</p>", unsafe_allow_html=True)
+                with c3: st.markdown(f"<p>{job['deadline']}</p>", unsafe_allow_html=True)
+                with c4: 
+                    # The delete button logic
+                    if st.button("🗑️", key=f"del_job_{job['id']}"):
+                        confirm_delete_dialog(job)
+
+                # Add a divider under every row EXCEPT the last one
+                if i < len(st.session_state.saved_jobs) - 1:
+                    st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)

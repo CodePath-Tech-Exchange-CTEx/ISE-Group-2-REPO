@@ -7,7 +7,7 @@
 
 import streamlit as st
 
-from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs
 from data_fetcher import get_jobs
 
 #init_db() #initialize database on startup
@@ -111,9 +111,13 @@ if __name__ == '__main__':
     elif st.session_state.page == "profile":
         ProfilePage(app_container)
 
-        with app_container:
-            st.divider()
-            KeywordMatcher(st.container())
+        st.divider()
+        KeywordMatcher(st.container())
+        st.divider()
+        SavedJobs(st.container())
+            
+
+            
     # Render nav bar outside main containe
 NavBar()
 
