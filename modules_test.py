@@ -125,8 +125,33 @@ class TestJobRender(unittest.TestCase):
                 self.assertIn("Python", html)
                 self.assertIn("Git", html)
                 self.assertIn("Florida", html)
-
 ########## code change ##########
+
+
+        @patch("modules.components.html")
+        def test_favorite_button_in_html(self, mock_html):
+            """Test that the bookmark button is rendered in each job card."""
+            jobs = [{
+            "id": "google-1",
+            "company": "Google",
+            "title": "Software Engineer Intern Summer 2026",
+            "description": "Work on scalable systems.",
+            "skills": ["Python", "Git"],
+            "experience": "Projects accepted",
+            "location": "Florida",
+            }]
+            modules.Render_Job(DummyContainer(), jobs)
+
+            html = mock_html.call_args[0][0]
+
+            # Check bookmark button and JS are present
+            self.assertIn("bookmark-btn", html)
+            self.assertIn("💾", html)
+            self.assertIn("toggleBookmark", html)
+            self.assertIn("bm-google-1", html)       
+
+
+
 class TestNavigation(unittest.TestCase):
     def setUp(self):
         """Initialize the app simulation."""
