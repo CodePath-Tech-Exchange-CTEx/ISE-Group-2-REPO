@@ -430,7 +430,31 @@ def Render_Job(container, jobs):
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    position: relative;
     }
+
+        /* bookmark button styles */
+    .bookmark-btn {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.3;
+        transition: opacity 0.2s, transform 0.15s;
+    }
+    .bookmark-btn.saved {
+        opacity: 1;
+    }
+    .bookmark-btn:hover {
+        transform: scale(1.2);
+    }
+
+
     .header {
     display: flex;
     align-items: center;
@@ -544,11 +568,14 @@ def Render_Job(container, jobs):
         description = job.get("description", "")
         experience = job.get("experience", "")
         location = job.get("location", "")
+        job_id = job.get("id", "") 
         skills_html = render_skills(job.get("skills", []))
 
 
         html += f"""
         <section class="card">
+          <button class="bookmark-btn" id="bm-{job_id}"
+                  onclick="toggleBookmark(this, '{job_id}')">💾</button> 
           <div class="header">
             <div>
               <h2 class="title">{title}</h2>
@@ -572,7 +599,26 @@ def Render_Job(container, jobs):
           <div class="location">📍 {location}</div>
         </section>
         """
-
+        
+ # closing div + JS script
+    html += """
+    </div>
+    <script>
+      function toggleBookmark(btn, jobId) {
+        const favs = JSON.parse(sessionStorage.getItem('favs') || '{}');
+        favs[jobId] = !favs[jobId];
+        sessionStorage.setItem('favs', JSON.stringify(favs));
+        btn.classList.toggle('saved', favs[jobId]);
+      }
+      const favs = JSON.parse(sessionStorage.getItem('favs') || '{}');
+      Object.keys(favs).forEach(id => {
+        if (favs[id]) {
+          const btn = document.getElementById('bm-' + id);
+          if (btn) btn.classList.add('saved');
+        }
+      });
+    </script>
+    """
     html += "</div>"
 
     with container:
