@@ -136,7 +136,6 @@ def GeminiChatbot(container):
             border: 2px solid black !important;
             border-radius: 30px; 
             width: 60%;
-            margin-top: -12%; 
             background-color: white !important;
         }
 
@@ -466,7 +465,6 @@ def Render_Job(container, jobs):
     border-radius: 18px;
     padding: 22px;
     background: #ffffff;
-    min-height: 52vh;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -616,13 +614,28 @@ def Render_Job(container, jobs):
     html += "</div>"
 
     with container:
-        components.html(html, height=550, scrolling=True) 
+        components.html(html, height=420, scrolling=True) 
         
 def render_skills(skills): 
     chips = "" 
     for skill in skills: 
         chips += f'<span class="chip">{skill}</span>' 
     return chips
+
+def render_apply_window_contents(job):
+    st.markdown(f"### {job['title']}")
+    st.write(f"Apply for **{job['company']}** via the official link below:")
+    st.link_button(
+        "Go to Application Site",
+        job["link"],
+        type="primary",
+        use_container_width=True
+    )
+
+@st.dialog("Apply to this job")
+def show_apply_window(job):
+    render_apply_window_contents(job)
+    
 
 def ResumeUploader(container):
     """

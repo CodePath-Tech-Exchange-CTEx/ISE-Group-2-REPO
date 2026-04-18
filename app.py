@@ -7,7 +7,8 @@
 
 import streamlit as st
 
-from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs, application_tracker
+
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs, show_apply_window, application_tracker
 from data_fetcher import get_jobs
 
 #init_db() #initialize database on startup
@@ -35,6 +36,11 @@ st.markdown(
     .stApp {
         background-color: white;
         color: black;
+    }
+
+    /* Target only the Apply button's text (letter) color */
+    .st-key-apply_btn_bottom button p {
+        color: #6B5CA5 !important;
     }
     </style>
     """,
@@ -79,6 +85,7 @@ if __name__ == '__main__':
 
         # dropdown allows users to specify which job description Gemini should reference.
         # Placing it here ensures users see the 'Selection' before they see the 'Visuals'.
+        selected_job = None
         with app_container:
             if jobs_to_show:
                 job_titles = [f"{j.get('title')} at {j.get('company')}" for j in jobs_to_show]
@@ -93,11 +100,20 @@ if __name__ == '__main__':
                 for j in jobs_to_show:
                     if f"{j.get('title')} at {j.get('company')}" == selected_job_name:
                         st.session_state['current_job_desc'] = j.get('description')
-                        st.session_state['current_job_id'] = j.get('id') # for match score
+                        st.session_state['current_job_id'] = j.get('id') # for match score          
+                        selected_job = j
+                        break
             else:
                 st.warning("No jobs found matching your search.")
 
         Render_Job(app_container, jobs_to_show)
+
+        # Render the Apply button below the job card info
+        with app_container:
+            if selected_job:
+                if st.button("🚀 Apply for this Job", key="apply_btn_bottom", use_container_width=True):
+                    show_apply_window(selected_job)
+
         GeminiChatbot(app_container)
 
         st.divider()
