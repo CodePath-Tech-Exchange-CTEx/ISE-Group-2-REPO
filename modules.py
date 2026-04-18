@@ -10,21 +10,26 @@
 from internals import create_component
 import streamlit as st
 import streamlit.components.v1 as components
-from google import genai
-from db_handler import init_db, save_chat_log 
-import pdfplumber #used for PDF parsing
-try:
-    # Use .get() to avoid crashing if the key is missing during tests
-    api_key = st.secrets.get("GEMINI_API_KEY", "mock_key_for_testing")
-    
-    client = genai.Client(
-        api_key=api_key,
-        http_options={'api_version': 'v1'}
-    )
-except Exception as e:
-    # This prevents the whole app/test suite from crashing
-    client = None
-    print(f"Warning: Gemini Client not initialized: {e}")
+import vertexai
+from vertexai.generative_models import GenerativeModel
+from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline, delete_saved_job
+import pdfplumber
+
+
+PROJECT_ID = "oluwanifemi-elias-hu"   #TODO: Check if team can utilize the api with it being under my project
+LOCATION = "us-central1"
+
+# do not use global initialization, move them into a helper
+def get_gemini_model():
+    """
+    Initializes the Vertex AI environment using the project-specific 
+    credentials and returns a GenerativeModel instance. 
+    Using a helper ensures we don't hit initialization errors on app reload.
+    """
+    vertexai.init(project=PROJECT_ID, location=LOCATION)
+    # Using Gemini 1.5 Pro for its high reasoning capabilities and large context window,
+    # which is ideal for comparing long resumes against detailed job descriptions.
+    return GenerativeModel("gemini-2.5-pro")
 
 
 # This one has been written for you as an example. You may change it as wanted.
@@ -44,9 +49,6 @@ def display_my_custom_component(value):
     # of the HTML file. HTML must be placed inside the "custom_components" folder.
     html_file_name = "my_custom_component"
     create_component(data, html_file_name)
-
-
-
 
 
 ########## code change ##########
@@ -117,142 +119,140 @@ def NavBar():
 
 
 
-
-# Hardcoded for school project deployment access
-try:
-    api_key = "AIzaSyAZLDqSgew3L06SORIc6s5ZyvseK2xLLy4" 
-    
-    client = genai.Client(
-        api_key=api_key,
-        http_options={'api_version': 'v1'}
-    )
-except Exception as e:
-    # Changed to a general Exception to catch any initialization issues
-    client = None
-    print(f"Gemini initialization failed: {e}")
-
 def GeminiChatbot(container):
-   st.markdown(
+    ############
+    # Main AI logic. It combines BigQuery metadata, extracted Resume text, and 
+    # the current job description to provide tailored advice
+    ################
+    st.markdown(
         """
         <style>
-
-       /* Existing Expander Styles... */
+        /* Expander as a "pop-up" drawer */
         div[data-testid="stExpander"] {
             border: 2px solid black !important;
             border-radius: 30px; 
             width: 60%;
-            margin-top: -12%; 
             background-color: white !important;
         }
 
-        /* Force all chat text to be black regardless of theme */
+        /* Force chat text to be black for readability */
         [data-testid="stChatMessage"] div, 
         [data-testid="stChatMessage"] p, 
         [data-testid="stChatMessage"] li {
             color: black !important;
         }
 
-        /* Make the assistant bubble a light color so black text is easy to read */
+        /* Assistant bubble styling */
         [data-testid="stChatMessage"][data-testid="assistant"] {
             background-color: #f0f2f6 !important;
             border: 1px solid #ddd;
         }
         
-        /* Make the user bubble a different light color */
+        /* User bubble styling */
         [data-testid="stChatMessage"][data-testid="user"] {
             background-color: #e1f5fe !important;
             border: 1px solid #b3e5fc;
         }
 
-       
-        
         .stChatInput {
             border: 1px solid black !important;
             border-radius: 30px;
         }
-
         </style>
         """,
         unsafe_allow_html=True
-
-        
     )
-   with container:
 
+    with container:
         st.markdown('<div id="chatbot-section-wrapper">', unsafe_allow_html=True)
-        # Use an expander to act as a "pop-up" drawer
+        
         with st.expander("🔎 Ask AI Assistant", expanded=False):
             
-            # Chat history setup
+            # 1. IDENTIFY CONTEXT
+            # Pull IDs from session state (defaults provided if keys don't exist yet)
+            user_id = st.session_state.get('user_id', 'user1')
+            resume_id = st.session_state.get('current_resume_id', 'res01')
+            job_id = st.session_state.get('current_job_id', 'job01')
+
+            # Initialize local UI chat history so messages persist during the session
             if "messages" not in st.session_state:
                 st.session_state.messages = []
 
-            # Display previous messages
+            # Render existing messages from the current session
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
-            # Handle new user input
+            # 2. HANDLE NEW USER INPUT
             if prompt := st.chat_input("Ask how to improve your resume..."):
+                # Display user message immediately
                 with st.chat_message("user"):
                     st.markdown(prompt)
                 st.session_state.messages.append({"role": "user", "content": prompt})
 
-                # 1. Define these BEFORE the try block so they are always available
-                resume_context = st.session_state.get('user_resume', 'No resume provided.')
-                job_context = st.session_state.get('current_job_desc', 'No job selected.')
-
-
-                # Attempt to generate a response from Gemini
                 try:
+                    # 3. FETCH BIGQUERY DATA FOR AI CONTEXT
+                    # Call the function from data_fetcher.py to get real DB data
+                    resume_data = get_resume_with_skills(resume_id)
+                    
+                    # Convert the list of skills from BigQuery into a readable string
+                    skills_list = ", ".join(resume_data.get('skills', [])) if resume_data.get('skills') else "No skills listed."
+                    
+                    # Get unstructured text extracted from the file (PDF)
+                    full_resume_text = st.session_state.get('user_resume', 'No full resume text uploaded.')
+                    
+                    # Get the job description from Adzuna carousel
+                    job_desc = st.session_state.get('current_job_desc', 'General career advice context.')
+                    
                     with st.chat_message("assistant"):
-                        with st.spinner("Thinking..."):
+                        with st.spinner("Analyzing with Vertex AI..."):
+
+                            # Call function instead of using global method only access when needed
+                            model = get_gemini_model()
                             
-                            comparison_prompt = (
-                                f"You are a professional career advisor. Analyze the following:\n\n"
-                                f"USER RESUME: {resume_context}\n\n"
-                                f"JOB DESCRIPTION: {job_context}\n\n"
+                            # 4. PROMPT ENGINEERING (Semantic Comparison)
+                            # We feed all three parts: Profile Metadata, Full Resume, and Job Description.
+                            # The structured 'CANDIDATE PROFILE' helps Gemini identify core strengths,
+                            # while the 'FULL RESUME TEXT' allows it to see details like work dates and projects.
+                            full_prompt = (
+                                f"You are a professional career advisor and a friendly helpful hand in suggesting ways to improve skills, experiences, projects, etc.\n\n"
+                                f"CANDIDATE PROFILE:\n- Name: {resume_data.get('name', 'Applicant')}\n- Skills: {skills_list}\n\n"
+                                f"FULL RESUME TEXT:\n{full_resume_text}\n\n"
+                                f"TARGET JOB DESCRIPTION:\n{job_desc}\n\n"
                                 f"USER QUESTION: {prompt}\n\n"
-                                f"Provide specific feedback on how the user can better align their resume to this job."
+                                f"INSTRUCTIONS: If the user asks for help with their resume Compare the resume against the job description. "
+                                f"Answer the users questions, Identify gaps between resume and job description, highlight matching skills, and give specific suggestions depending on what the user asks for."
                             )
 
-                            response = client.models.generate_content(
-                                model="models/gemini-2.5-flash-lite",
-                                contents=f"Resume: {resume_context}\nJob: {job_context}\nUser Question: {prompt}"
-                            )
- 
+                            # 5. VERTEX AI GENERATION
+                            # We use 'model' defined at the top of modules.py via vertexai.init.
+                            # The response is generated based on the grounded data provided in the prompt.
+                            response = model.generate_content(full_prompt)
                             ai_response = response.text
-                            #FIX the reponse from being white text by overwriting streamlit theming
-                            st.markdown(f"""
-                                <div style="color: black !important;">
-                                    {ai_response}
-                                </div>
-                            """, unsafe_allow_html=True)
-
                             
+                            # Display AI response in the UI
                             st.markdown(ai_response)
                     
-                    # Store response in session history
-                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
-
-                    #-------change in code-------
-                    # Save the interaction to your SQL database
-                    save_chat_log(
-                        user_id="user1", 
-                        resume=resume_context, 
-                        job_desc=job_context, 
-                        prompt=prompt, 
-                        response=ai_response
+                    # 6. SAVE INTERACTION BACK TO BIGQUERY
+                    # This closes the loop: Data -> AI -> Data Storage.
+                    # We log the user's specific prompt and the AI's tailored response for future context retrieval.
+                    save_chat_session(
+                        user_id=user_id,
+                        resume_id=resume_id,
+                        job_id=job_id,
+                        user_prompt=prompt,
+                        ai_response=ai_response
                     )
+
+                    # Update local session state so the message stays on screen after rerun
+                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 
                 except Exception as e:
+                    # Catch authentication or API quota errors and display them safely to the user
                     st.error(f"AI error occurred: {e}")
-                    # Log the specific error for debugging if needed
-                    print(f"DEBUG: {str(e)}")
+                    print(f"DEBUG ERROR: {str(e)}")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-
 
 
 
@@ -327,9 +327,18 @@ def ProfilePage(container):
                 text-align: center;
             }
 
+            .st-key-profile_container span{
+                color: black;
+            
+            }
+
 
         </style>
     """, unsafe_allow_html=True)
+
+    user_info = get_user_profile(1)
+
+    container = st.container(key="profile_container")
 
     with container:
         st.title("User Profile")
@@ -339,10 +348,36 @@ def ProfilePage(container):
         with col1:
             st.markdown("<h1 style='font-size: 100px; margin: 0;'>👤</h1>", unsafe_allow_html=True)
         with col2:
-            st.subheader("John Doe")
-            st.write("**University:** Google Cloud Tech")
-            st.write("**Major:** Computer Science")
+            st.subheader(f"{user_info['first_name']} {user_info['last_name']}")
+            #st.write("**University:** Google Cloud Tech")
+            #st.write("**Major:** Computer Science")
+
+            # Stop email hyperlinking
+            email = user_info['email']
+            email = email.replace("@", "<span>@</span>") 
+            st.markdown(f"**Email:** {email}", unsafe_allow_html=True)
+
+            st.write(f"**Date created:** {user_info['date_created']}")
+            if user_info['is_verified']:
+                st.write(f"**Verified:** ✅")
+            else:
+                st.write(f"**Verified:** ❌")
         
+        st.divider()
+
+        # User Resumes Dropdown Menu
+        resumes = get_user_resume(1)
+        options = {
+            r_id: resumes[r_id]["FILENAME"]
+            for r_id in resumes
+        }
+
+        st.title("Resumes")
+        if options:
+            st.selectbox(label="All submitted resumes", options=list(options.keys()), format_func=lambda x: options[x])
+        else:
+            st.write("No resumes found.")
+
         st.divider()
 
         # START CENTERED RESUME AREA (No border)
@@ -378,7 +413,7 @@ def ProfilePage(container):
         _, input_col, _ = st.columns([1, 4, 1])
         with input_col:
             if st.session_state.resume_mode == "File":
-                uploaded_file = st.file_uploader("Upload PDF or Word Doc", type=["pdf", "docx"], key="resume_upload", label_visibility="collapsed")
+                uploaded_file = st.file_uploader("Upload PDF", type=["pdf"], key="resume_upload", label_visibility="collapsed")
                 
                 if uploaded_file:
                     with st.spinner("Extracting text from resume..."):
@@ -426,7 +461,6 @@ def Render_Job(container, jobs):
     border-radius: 18px;
     padding: 22px;
     background: #ffffff;
-    min-height: 52vh;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     box-sizing: border-box;
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -622,13 +656,28 @@ def Render_Job(container, jobs):
     html += "</div>"
 
     with container:
-        components.html(html, height=550, scrolling=True) 
+        components.html(html, height=420, scrolling=True) 
         
 def render_skills(skills): 
     chips = "" 
     for skill in skills: 
         chips += f'<span class="chip">{skill}</span>' 
     return chips
+
+def render_apply_window_contents(job):
+    st.markdown(f"### {job['title']}")
+    st.write(f"Apply for **{job['company']}** via the official link below:")
+    st.link_button(
+        "Go to Application Site",
+        job["link"],
+        type="primary",
+        use_container_width=True
+    )
+
+@st.dialog("Apply to this job")
+def show_apply_window(job):
+    render_apply_window_contents(job)
+    
 
 def ResumeUploader(container):
     """
@@ -685,16 +734,27 @@ def ResumeUploader(container):
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 10px;'>Upload Resume</p>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload Resume", 
-            type=["pdf", "docx"], 
+            type=["pdf"], 
             key="home_resume_uploader",
             label_visibility="collapsed"
         )
         if uploaded_file:
-            # Extract text so Gemini can read it later
-            extracted_text = extract_text_from_pdf(uploaded_file)
-            st.session_state['user_resume'] = extracted_text
-            st.session_state['current_resume'] = uploaded_file # For UI tracking
-            st.success("✅ File Ready & Processed!")
+            # Check file extension and extract text (Removed DOCX logic)
+            if uploaded_file.name.lower().endswith('.pdf'):
+                extracted_text = extract_text_from_pdf(uploaded_file)
+            else:
+                extracted_text = ""
+
+            if 'current_resume_id' not in st.session_state:
+                with st.spinner("Processing & Saving to Database..."):
+                    # Call your new pipeline function
+                    new_id = save_resume_pipeline(extracted_text) 
+                    
+                    # 3. STORE THE NEW ID IN SESSION STATE
+                    st.session_state['current_resume_id'] = new_id
+                    st.session_state['user_resume'] = extracted_text
+                
+                st.success(f"✅ Resume Processed! (ID: {st.session_state.get('current_resume_id')})")
         else:
             if 'current_resume' in st.session_state:
                 del st.session_state['current_resume']
@@ -738,58 +798,152 @@ def KeywordMatcher(container):
 
     with container:
         st.markdown("<p style='font-weight: bold; color: #31333F; margin-bottom: 5px;'>Compare to Job Description </p>", unsafe_allow_html=True)
-        
-        # Check if file exists in session state
-        if 'current_resume' not in st.session_state:
-            st.button("Compare to Job Descriptions", disabled=True, use_container_width=True, key="disabled_match_btn")
+                
+        # 1. Define the condition: Is the resume missing?
+        resume_id = st.session_state.get('current_resume_id')
+        job_id = st.session_state.get('current_job_id')
+        is_disabled = resume_id is None
+         # 2. Use a single button with a dynamic 'disabled' property
+        if st.button("Analyze Match Score", type="primary", use_container_width=True, key="analyze_match_btn", disabled=is_disabled):
+            with st.spinner("Analyzing..."):
+                import time
+                time.sleep(1.5) 
+                
+                score, match_found = get_match_score(resume_id, job_id)
+                # score = 78
+                st.markdown(f"""
+                    <div class="match-card">
+                        <h2 style='margin:0; color:#000000;'>{score}%</h2>
+                        <p style='color: #666;'>Keyword Match Score</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                if match_found:
+                    st.info(f"**Matches found:** {', '.join(match_found)}")
+                else:
+                    st.warning("No matching skills found between your resume and this job.")
+
+        # 3. Show the warning caption only if disabled
+        if is_disabled:
             st.caption("⚠️ Please upload a resume to enable analysis.")
-        else:
-            if st.button("Analyze Match Score", type="primary", use_container_width=True):
-                with st.spinner("Analyzing..."):
-                    import time
-                    time.sleep(1.5) 
-                    
-                    score = 78
-                    
-                    # Styled results container
-                    st.markdown(f"""
-                        <div class="match-card">
-                            <h2 style='margin:0; color:#000000;'>{score}%</h2>
-                            <p style='color: #666;'>Keyword Match Score</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.info("**Matches found:** Python, SQL, Communication")
-
-
 
 
 def extract_text_from_pdf(pdf_file):
-    """
-    Parses an uploaded PDF file and concatenates text from all available pages.
-    
-    Args:
-        pdf_file (file-like object): The PDF file uploaded via Streamlit.
-        
-    Returns:
-        str: A single string containing the full text of the PDF, 
-             separated by newlines. Returns an empty string if extraction fails.
-    """
+    """ Uses pdfplumber to pull text from all PDF pages. """
     text = ""
     try:
-        # Open the PDF binary stream
         with pdfplumber.open(pdf_file) as pdf:
-            # Iterate through each page to ensure multi-page resumes are captured
             for page in pdf.pages:
                 page_text = page.extract_text()
-                
-                # Only append if the page actually contains extractable text
-                if page_text:
-                    text += page_text + "\n"
-                    
+                if page_text: text += page_text + "\n"
     except Exception as e:
-        # Log the specific error to the Streamlit UI for user feedback
-        st.error(f"Error reading PDF: {e}")
-        
+        st.error(f"PDF Error: {e}")
     return text
 
+@st.dialog("Confirm Deletion")
+def confirm_delete_dialog(job):
+    st.write(f"Are you sure you want to remove **{job['position']}** at **{job['company']}** from your saved jobs?")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun() 
+            
+    with col2:
+        if st.button("Yes, Delete", type="primary", use_container_width=True):
+            
+            # Fetch the current user ID (using the default 'user1' from your app.py if not set)
+            current_user_id = st.session_state.get('user_id', '1')
+            
+            with st.spinner("Deleting..."):
+                # Call the database function
+                db_success = delete_saved_job(current_user_id, job["id"])
+                
+                if db_success:
+                    # Database deletion worked! Now update the UI.
+                    st.session_state.saved_jobs = [j for j in st.session_state.saved_jobs if j["id"] != job["id"]]
+                    st.rerun() 
+                else:
+                    # Something went wrong in the DB
+                    st.error("⚠️ Failed to delete from the database. Please try again later.")
+
+    
+
+def SavedJobs(container):
+    # 2. Setup mock data if it doesn't exist
+    if 'saved_jobs' not in st.session_state:
+        st.session_state.saved_jobs = [
+            {"id": 1, "company": "Tech Solutions", "position": "Backend Software Developer", "deadline": "10/04/2026"},
+            {"id": 2, "company": "Cloud Native Solutions", "position": "DevOps Engineer", "deadline": "10/14/2026"},
+            {"id": 3, "company": "Data Insights Corp.", "position": "Data Engineer", "deadline": "11/25/2026"}
+        ]
+
+    # 3. Inject CSS to style the specific container and the buttons inside it
+    st.markdown("""
+        <style>
+        /* Target the specific container key */
+        div[data-testid="stVerticalBlock"] > div.st-key-saved_jobs_block {
+            background-color: #24252C;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Style the Streamlit buttons to look like transparent icons */
+        div.st-key-saved_jobs_block button {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 22px !important;
+            color: white !important;
+            padding: 0 !important;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        div.st-key-saved_jobs_block button:hover {
+            color: #ff4b4b !important;
+        }
+
+        /* Custom divider for rows */
+        hr.table-divider {
+            border: 0;
+            border-top: 1px solid #4f5058;
+            margin: 0px 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with container:
+        st.title("Saved Jobs")
+        # Wrap everything in a key-targeted container so the CSS only affects this table
+        table_container = st.container(key="saved_jobs_block")
+        
+        with table_container:
+            if not st.session_state.saved_jobs:
+                st.markdown("<p style='text-align: center; color: #888;'>No saved jobs.</p>", unsafe_allow_html=True)
+                return
+
+            # --- Table Header ---
+            col1, col2, col3, col4 = st.columns([2.5, 3.5, 2.5, 0.5])
+            with col1: st.markdown("<p style='font-weight: bold;'>Company</p>", unsafe_allow_html=True)
+            with col2: st.markdown("<p style='font-weight: bold;'>Position</p>", unsafe_allow_html=True)
+            with col3: st.markdown("<p style='font-weight: bold;'>Deadline</p>", unsafe_allow_html=True)
+            with col4: st.empty() # Placeholder for the trash icon column
+
+            st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
+
+            # --- Table Rows ---
+            for i, job in enumerate(st.session_state.saved_jobs):
+                c1, c2, c3, c4 = st.columns([2.5, 3.5, 2.5, 0.5], vertical_alignment="center")
+                
+                with c1: st.markdown(f"<p>{job['company']}</p>", unsafe_allow_html=True)
+                with c2: st.markdown(f"<p>{job['position']}</p>", unsafe_allow_html=True)
+                with c3: st.markdown(f"<p>{job['deadline']}</p>", unsafe_allow_html=True)
+                with c4: 
+                    # The delete button logic
+                    if st.button("🗑️", key=f"del_job_{job['id']}"):
+                        confirm_delete_dialog(job)
+
+                # Add a divider under every row EXCEPT the last one
+                if i < len(st.session_state.saved_jobs) - 1:
+                    st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
