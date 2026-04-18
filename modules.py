@@ -14,7 +14,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline, delete_saved_job
 import pdfplumber
-
+import datetime
 
 PROJECT_ID = "oluwanifemi-elias-hu"   #TODO: Check if team can utilize the api with it being under my project
 LOCATION = "us-central1"
@@ -59,7 +59,8 @@ def NavBar():
     /*Button styling*/
     .st-key-nav_container .st-key-nav_home_btn button,
     .st-key-nav_container .st-key-nav_profile_btn button,
-    .st-key-nav_container .st-key-nav_settings_btn button {
+    .st-key-nav_container .st-key-nav_settings_btn button 
+    .st-key-nav_container .st-key-nav_tracker_btn button {
         background: inherit !important;
         font-size: 24px !important;
         color: gray !important;
@@ -103,7 +104,7 @@ def NavBar():
     container = st.container(key="nav_container")
 
     with container:
-        col1, col2, col3 = st.columns([1, 1, 1], vertical_alignment="center", gap="small")
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1], vertical_alignment="center", gap="small")
 
         with col1:
             st.button("⚙️", key="nav_settings_btn")
@@ -116,7 +117,10 @@ def NavBar():
             if st.button("👤", key="nav_profile_btn"):
                 st.session_state.page = "profile"
                 st.rerun()
-
+        with col4: 
+            if st.button("📋", key="nav_tracker_btn"): # Using a chart icon for the tracker
+                st.session_state.page = "tracker"
+                st.rerun()
 
 
 def GeminiChatbot(container):
@@ -901,3 +905,75 @@ def SavedJobs(container):
                 # Add a divider under every row EXCEPT the last one
                 if i < len(st.session_state.saved_jobs) - 1:
                     st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
+
+
+def application_tracker(container):
+    """
+    Module for tracking job applications. 
+    Allows users to add, edit status, and delete job applications.
+    """
+    with container:
+        st.title("📋 Application Status Tracker")
+        st.write("Keep track of your job hunt progress below.")
+
+        if 'job_tracker' not in st.session_state:
+            st.session_state.job_tracker = []
+
+        # 1. CREATE: Section to add a new job
+        with st.expander("➕ Add New Job to Tracker", expanded=False):
+            with st.form("add_job_form", clear_on_submit=True):
+                new_job = st.text_input("Job Title", placeholder="e.g. Data Scientist at Google")
+                
+                # --- NEW: Date Input Field ---
+                applied_date = st.date_input("Date Applied", value=datetime.date.today())
+                
+                submit_job = st.form_submit_button("Add to List")
+                
+                if submit_job and new_job:
+                    st.session_state.job_tracker.append({
+                        "id": len(st.session_state.job_tracker),
+                        "title": new_job,
+                        "date": applied_date.strftime("%Y-%m-%d"), # Store as string
+                        "status": "Applied"
+                    })
+                    st.success(f"Added '{new_job}'!")
+                    st.rerun()
+
+        st.divider()
+
+        # 2. LIST & EDIT/DELETE: Display the jobs
+        if not st.session_state.job_tracker:
+            st.info("No applications tracked yet. Use the button above to start!")
+        else:
+            for index, job in enumerate(st.session_state.job_tracker):
+                with st.container(border=True):
+                    # Adjusted column ratios to fit the date
+                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**{job['title']}**")
+                    
+                    with col2:
+                        # --- DISPLAY: The manual date ---
+                        st.caption(f"📅 Applied: {job['date']}")
+                    
+                    with col3:
+                        status_options = ["Applied", "Interview", "Rejected", "Accepted"]
+                        current_index = status_options.index(job['status'])
+                        
+                        new_status = st.selectbox(
+                            "Status",
+                            options=status_options,
+                            index=current_index,
+                            key=f"status_{index}",
+                            label_visibility="collapsed"
+                        )
+                        
+                        if new_status != job['status']:
+                            st.session_state.job_tracker[index]['status'] = new_status
+                            st.toast(f"Updated {job['title']} to {new_status}!")
+
+                    with col4:
+                        if st.button("🗑️", key=f"delete_{index}", help="Delete this application"):
+                            st.session_state.job_tracker.pop(index)
+                            st.rerun()
