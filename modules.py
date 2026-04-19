@@ -851,11 +851,11 @@ def confirm_delete_dialog(job):
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", key=f"cancel_{job['id']}", use_container_width=True):
             st.rerun() 
             
     with col2:
-        if st.button("Yes, Delete", type="primary", use_container_width=True):
+        if st.button("Yes, Delete", key=f"confirm_{job['id']}", type="primary", use_container_width=True):
             
             # Fetch the current user ID (using the default 'user1' from your app.py if not set)
             current_user_id = st.session_state.get('user_id', '1')

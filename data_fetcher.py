@@ -590,7 +590,7 @@ def get_next_id(table_id, id_column, prefix="", padding=3):
         print(f"ID Generation Error: {e}")
         return "1"
 
-    import json
+import json
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 
 def ai_extract_resume_data(pdf_text):
@@ -711,6 +711,97 @@ def delete_saved_job(user_id, job_id):
     except Exception as e:
         print(f"Database Error: {e}")
         return False
+
+def add_saved_job(user_id, job_id):
+    """
+    Inserts a new saved job record into the BigQuery 'favorites' table 
+    using the get_next_id helper function.
+    Returns True if successful, False if it fails.
+    """
+    try:
+        # TODO: Replace 'your_dataset' with your actual dataset name
+        table_ref = "oluwanifemi-elias-hu.your_dataset.favorites"
+
+        # 1. Fetch the next ID cleanly using your helper function
+        favorite_id = get_next_id(table_ref, "FavoriteId", prefix="fav", padding=3)
+
+        # 2. Write the parameterized SQL query
+        query = f"""
+            INSERT INTO `{table_ref}` (FavoriteId, JobId, UserId)
+            VALUES (@favorite_id, @job_id, @user_id)
+        """
+
+        # 3. Configure the parameters
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("favorite_id", "STRING", favorite_id),
+                bigquery.ScalarQueryParameter("job_id", "STRING", str(job_id)),
+                bigquery.ScalarQueryParameter("user_id", "STRING", str(user_id)),
+            ]
+        )
+
+        # 4. Execute the query
+        query_job = bq_client.query(query, job_config=job_config)
+        query_job.result()  
+        
+        print(f"DEBUG: Successfully added JobId {job_id} for UserId {user_id} with ID {favorite_id}.")
+        return True
+
+    except Exception as e:
+        print(f"BigQuery Insert Error: {e}")
+        return False
+
+def get_user_saved_jobs(user_id):
+    """
+    Fetches the saved jobs for a specific user from BigQuery and 
+    merges them with the full job details.
+    """
+    try:
+        # 1. Initialize client and table reference
+        client = bigquery.Client(project="oluwanifemi-elias-hu")
+        table_ref = "oluwanifemi-elias-hu.your_dataset.favorites" # Update dataset name
+
+        # 2. Query BigQuery for this user's saved JobIds
+        query = f"""
+            SELECT JobId 
+            FROM `{table_ref}`
+            WHERE UserId = @user_id
+        """
+        
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("user_id", "STRING", str(user_id)),
+            ]
+        )
+
+        results = client.query(query, job_config=job_config).result()
+        
+        # Extract just the IDs into a simple Python list
+        saved_job_ids = [str(row.JobId) for row in results]
+
+        # If they have no saved jobs, exit early
+        if not saved_job_ids:
+            return []
+
+        # 3. Get all jobs and filter for the saved ones
+        all_jobs = get_jobs() 
+        final_saved_jobs = []
+
+        for job in all_jobs:
+            if str(job.get("id")) in saved_job_ids:
+                # Map the data to exactly match what your UI expects
+                final_saved_jobs.append({
+                    "id": job.get("id"),
+                    "company": job.get("company", "Unknown Company"),
+                    "position": job.get("title", "Unknown Position"), 
+                    "deadline": job.get("deadline", "TBD") # Ensure your get_jobs returns a deadline
+                })
+
+        return final_saved_jobs
+
+    except Exception as e:
+        print(f"Error fetching saved jobs from BigQuery: {e}")
+        return []
 
 if __name__ == "__main__":
     fetch_and_save_jobs()
