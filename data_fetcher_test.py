@@ -528,6 +528,79 @@ class TestDataFilter(unittest.TestCase):
         # Verify the first call was the Resume Table insert
         first_call_args = mock_bq.query.call_args_list[0]
         self.assertIn("resumesTable", first_call_args[0][0])
+
+class TestApplicationBigQuery(unittest.TestCase):
+
+    @patch("db_handler.bigquery.Client")
+    def test_insert_application(self, mock_client_class):
+        mock_client = MagicMock()
+        mock_client.query.return_value.result.return_value = None
+        mock_client_class.return_value = mock_client
+
+        result = db_handler.insert_application_to_bigquery(
+            "id1", "Test Job", "2025-01-01"
+        )
+
+        self.assertEqual(result["application_id"], "id1")
+        self.assertEqual(result["job_title"], "Test Job")
+        self.assertEqual(result["status"], "Applied")
+        mock_client.query.assert_called_once()
+
+
+    @patch("db_handler.bigquery.Client")
+    def test_update_application(self, mock_client_class):
+        mock_client = MagicMock()
+
+        mock_query_job = MagicMock()
+        mock_query_job.result.return_value = None
+        mock_query_job.errors = None
+
+        mock_client.query.return_value = mock_query_job
+        mock_client_class.return_value = mock_client
+
+        errors = db_handler.update_application_status_in_bigquery(
+            "id1", "Interview"
+        )
+
+        self.assertIsNone(errors)
+        mock_client.query.assert_called_once()
+
+
+    @patch("db_handler.bigquery.Client")
+    def test_delete_application(self, mock_client_class):
+        mock_client = MagicMock()
+
+        mock_query_job = MagicMock()
+        mock_query_job.result.return_value = None
+        mock_query_job.errors = None
+
+        mock_client.query.return_value = mock_query_job
+        mock_client_class.return_value = mock_client
+
+        errors = db_handler.delete_application_from_bigquery("id1")
+
+        self.assertIsNone(errors)
+        mock_client.query.assert_called_once()
+
+
+    @patch("db_handler.bigquery.Client")
+    def test_fetch_applications(self, mock_client_class):
+        mock_client = MagicMock()
+
+        fake_row = MagicMock()
+        fake_row.application_id = "id1"
+        fake_row.job_title = "Test Job"
+        fake_row.status = "Applied"
+        fake_row.applied_at = "2025-01-01"
+
+        mock_client.query.return_value.result.return_value = [fake_row]
+        mock_client_class.return_value = mock_client
+
+        result = db_handler.fetch_applications_from_bigquery()
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["title"], "Test Job")
+        self.assertEqual(result[0]["status"], "Applied")
             
 
 if __name__ == "__main__":
