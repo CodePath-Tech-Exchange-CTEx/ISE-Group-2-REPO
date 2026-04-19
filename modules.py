@@ -13,8 +13,10 @@ import streamlit.components.v1 as components
 import vertexai
 from vertexai.generative_models import GenerativeModel
 from data_fetcher import get_resume_with_skills, save_chat_session, get_chat_context, get_user_profile, get_user_resume, get_match_score, save_resume_pipeline, delete_saved_job
+from db_handler import insert_application_to_bigquery, update_application_status_in_bigquery, delete_application_from_bigquery, fetch_applications_from_bigquery
 import pdfplumber
 import datetime
+import uuid
 
 PROJECT_ID = "oluwanifemi-elias-hu"   #TODO: Check if team can utilize the api with it being under my project
 LOCATION = "us-central1"
@@ -952,7 +954,6 @@ def SavedJobs(container):
                 if i < len(st.session_state.saved_jobs) - 1:
                     st.markdown("<hr class='table-divider'>", unsafe_allow_html=True)
 
-
 def application_tracker(container):
     """
     Module for tracking job applications. 
@@ -963,7 +964,7 @@ def application_tracker(container):
         st.write("Keep track of your job hunt progress below.")
 
         if 'job_tracker' not in st.session_state:
-            st.session_state.job_tracker = []
+            st.session_state.job_tracker = fetch_applications_from_bigquery()
 
         # 1. CREATE: Section to add a new job
         with st.expander("➕ Add New Job to Tracker", expanded=False):
@@ -976,13 +977,22 @@ def application_tracker(container):
                 submit_job = st.form_submit_button("Add to List")
                 
                 if submit_job and new_job:
-                    st.session_state.job_tracker.append({
-                        "id": len(st.session_state.job_tracker),
+                    application_id = str(uuid.uuid4())
+                    applied_date_str = applied_date.strftime("%Y-%m-%d")
+
+                    new_entry = {
+                        "application_id": application_id,
                         "title": new_job,
-                        "date": applied_date.strftime("%Y-%m-%d"), # Store as string
+                        "date": applied_date_str,
                         "status": "Applied"
-                    })
-                    st.success(f"Added '{new_job}'!")
+                    }
+                    st.session_state.job_tracker.append(new_entry)
+                    
+                    try:
+                        insert_application_to_bigquery(application_id, new_job, applied_date_str)
+                        st.toast(f"✅ Added {new_job} to database")
+                    except Exception as e:
+                        st.error(f"Database sync failed: {e}")
                     st.rerun()
 
         st.divider()
@@ -1016,10 +1026,33 @@ def application_tracker(container):
                         )
                         
                         if new_status != job['status']:
+                            old_status = job['status']
                             st.session_state.job_tracker[index]['status'] = new_status
-                            st.toast(f"Updated {job['title']} to {new_status}!")
+                            try:
+                                update_application_status_in_bigquery(job['application_id'], new_status)
+                                st.toast(f"Updated status for {job['title']}!")
+                            except Exception as e:
+                                # Revert UI state if database sync failed
+                                st.session_state.job_tracker[index]['status'] = old_status
+                                if "streaming buffer" in str(e).lower():
+                                    st.error("⏳ Cannot update yet: BigQuery is still buffering this row. Try again in 30 mins.")
+                                else:
+                                    st.session_state.job_tracker[index]['status'] = old_status
+                                    st.error(f"Update failed: {e}")
+                            st.rerun()
 
                     with col4:
                         if st.button("🗑️", key=f"delete_{index}", help="Delete this application"):
-                            st.session_state.job_tracker.pop(index)
+                            deleted_job = st.session_state.job_tracker.pop(index)
+                            try:
+                                delete_application_from_bigquery(deleted_job['application_id'])
+                                st.toast(f"Removed {deleted_job['title']}")
+                            except Exception as e:
+                                # Revert UI state (put the job back) if database deletion failed
+                                st.session_state.job_tracker.insert(index, deleted_job)
+                                if "streaming buffer" in str(e).lower():
+                                    st.error("⏳ Cannot delete yet: This row is locked in BigQuery's buffer. Try again in 30 mins.")
+                                else:
+                                    st.session_state.job_tracker.insert(index, deleted_job)
+                                    st.error(f"Delete failed: {e}")
                             st.rerun()

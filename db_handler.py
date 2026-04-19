@@ -2,10 +2,10 @@ from google.cloud import bigquery
 
 from dotenv import load_dotenv
 import os
-
 load_dotenv()
 PROJECT_ID = "oluwanifemi-elias-hu"
 DATABASE_ID = "ISE"
+APPLICATION_STATUS_TABLE = f"{PROJECT_ID}.{DATABASE_ID}.applicationStatusTable"
 
 
 def insert_jobs_to_bigquery(jobs):
@@ -149,3 +149,88 @@ def get_jobs_from_bigquery():
     except Exception as e:
         print(f"Error fetching jobs from BigQuery: {e}")
         return []
+
+
+
+def insert_application_to_bigquery(application_id, job_title, date_submitted):
+    client = bigquery.Client(project=PROJECT_ID)
+    
+    query = f"""
+    INSERT INTO `{APPLICATION_STATUS_TABLE}` (application_id, job_title, status, applied_at)
+    VALUES (@app_id, @title, 'Applied', @date)
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("app_id", "STRING", application_id),
+            bigquery.ScalarQueryParameter("title", "STRING", job_title),
+            bigquery.ScalarQueryParameter("date", "DATE", str(date_submitted)),
+        ]
+    )
+    query_job = client.query(query, job_config=job_config)
+    query_job.result() 
+
+    return {
+        "application_id": application_id,
+        "job_title": job_title,
+        "status": "Applied",
+        "applied_at": date_submitted,
+    }
+
+def update_application_status_in_bigquery(application_id, new_status):
+    client = bigquery.Client(project=PROJECT_ID)
+
+    query = f"""
+    UPDATE `{APPLICATION_STATUS_TABLE}`
+    SET status = @status
+    WHERE application_id = @app_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("status", "STRING", new_status),
+            bigquery.ScalarQueryParameter("app_id", "STRING", application_id),
+        ]
+    )
+    query_job = client.query(query, job_config=job_config)
+    query_job.result()
+    return query_job.errors
+
+def delete_application_from_bigquery(application_id):
+    client = bigquery.Client(project=PROJECT_ID)
+    query = f"""
+    DELETE FROM `{APPLICATION_STATUS_TABLE}`
+    WHERE application_id = @app_id
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("app_id", "STRING", application_id),
+        ]
+    )
+    query_job = client.query(query, job_config=job_config)
+    query_job.result()
+    return query_job.errors
+
+def fetch_applications_from_bigquery():
+    client = bigquery.Client(project=PROJECT_ID)
+
+    query = f"""
+    SELECT 
+        application_id,
+        job_title,
+        status,
+        applied_at
+    FROM `{APPLICATION_STATUS_TABLE}`
+    """
+
+    query = client.query(query)
+    results = query.result()
+    applications = []
+
+    for row in results:
+        applications.append({
+            "application_id": row.application_id,
+            "title": row.job_title,
+            "status": row.status,
+            "date": str(row.applied_at)
+        })
+
+    return applications
