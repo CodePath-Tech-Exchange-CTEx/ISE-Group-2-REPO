@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* Your exact original CSS */
+        body { margin: 0; padding: 0; background: transparent; }
+        .carousel {
+            display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch; gap: 16px; padding: 12px 2px; width: 100%;
+        }
+        .carousel::-webkit-scrollbar { display: none; }
+        .card {
+            flex: 0 0 100%; scroll-snap-align: start; border: 1px solid #e5e7eb;
+            border-radius: 18px; padding: 22px; background: #ffffff;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); box-sizing: border-box;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            position: relative;
+        }
+        .bookmark-btn {
+            position: absolute; top: 18px; right: 18px; background: none;
+            border: none; font-size: 28px; cursor: pointer; padding: 0;
+            line-height: 1; opacity: 0.3; transition: opacity 0.2s, transform 0.15s;
+        }
+        .bookmark-btn.saved { opacity: 1; }
+        .bookmark-btn:hover { transform: scale(1.2); }
+        .header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .company { font-size: 28px; font-weight: 700; margin: 0; }
+        .title { color: #555; margin-top: 4px; margin-bottom: 16px; }
+        .badges { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 14px 0; }
+        .badge-open {
+            background: #d1fae5; color: #065f46; padding: 8px 12px;
+            border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-flex;
+        }
+        .skills-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 18px 0; }
+        .chip { 
+            display: inline-block; padding: 8px 10px; border-radius: 10px; 
+            border: 1px solid #e5e7eb; background: #f9fafb; font-size: 14px;
+            font-weight: 650; color: #111827; 
+        }
+        .location {
+            background: #dcfce7; color: #166534; display: inline-flex; align-items: center;
+            gap: 8px; padding: 8px 12px; border-radius: 10px; font-weight: 800;
+            font-size: 14px; margin-top: 10px;
+        }
+        .section { margin-top: 14px; color: #111827; }
+        .section p { margin: 6px 0; color: #374151; }
+    </style>
+</head>
+<body>
+    <div id="carousel" class="carousel"></div>
+
+    <script>
+        // 1. STREAMLIT MESSAGING API
+        function sendMessageToStreamlitClient(type, data) {
+            const outData = Object.assign({ isStreamlitMessage: true, type: type }, data);
+            window.parent.postMessage(outData, "*");
+        }
+
+        // 2. RENDER FUNCTION (Listens for data sent from Python)
+        function onDataFromPython(event) {
+            if (event.data.type !== "streamlit:render") return;
+            
+            // Extract the 'jobs' dictionary passed from Python
+            const jobs = event.data.args.jobs;
+            const carousel = document.getElementById("carousel");
+            let html = "";
+
+            // Build the HTML using the injected data
+            jobs.forEach(job => {
+                const skillsHtml = (job.skills || []).map(s => `<span class="chip">${s}</span>`).join("");
+                
+                html += `
+                <section class="card">
+                    <button class="bookmark-btn" id="bm-${job.id}" onclick="saveJob(this, '${job.id}')">💾</button> 
+                    <div class="header">
+                        <div>
+                            <h2 class="title">${job.title || ''}</h2>
+                            <div class="company">${job.company || ''}</div>
+                        </div>
+                    </div>
+                    <div class="badges">
+                        <div class="badge-open">✅ Open for applications</div>
+                    </div>
+                    <div class="skills-row">${skillsHtml}</div>
+                    <div class="section">
+                        <p><b>Job Description:</b> ${job.description || ''}</p>
+                        <p><b>Experience:</b> ${job.experience || ''}</p>
+                    </div>
+                    <div class="location">📍 ${job.location || ''}</div>
+                </section>`;
+            });
+
+            carousel.innerHTML = html;
+            
+            // Tell Streamlit how tall the iframe needs to be to avoid clipping
+            sendMessageToStreamlitClient("streamlit:setFrameHeight", { height: 450 });
+        }
+
+        // 3. BUTTON CLICK HANDLER
+        function saveJob(btn, jobId) {
+            // Make the button visually solid
+            btn.classList.add('saved');
+            
+            // Send the Job ID back to Python!
+            // We include a timestamp so Streamlit registers repeated clicks on different jobs
+            sendMessageToStreamlitClient("streamlit:setComponentValue", { 
+                value: { id: jobId, timestamp: Date.now() } 
+            });
+        }
+
+        // Connect the listener and tell Streamlit the component is ready
+        window.addEventListener("message", onDataFromPython);
+        sendMessageToStreamlitClient("streamlit:componentReady", { apiVersion: 1 });
+    </script>
+</body>
+</html>
