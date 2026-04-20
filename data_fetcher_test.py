@@ -601,7 +601,126 @@ class TestApplicationBigQuery(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["title"], "Test Job")
         self.assertEqual(result[0]["status"], "Applied")
-            
+
+class TestUserSavedJobs(unittest.TestCase):
+
+    # --- Tests for delete_saved_job ---
+    @patch("data_fetcher.bq_client")
+    def test_delete_saved_job_success(self, mock_bq):
+        # Mock a successful query execution with no errors
+        mock_bq.query.return_value.result.return_value = None
+        
+        result = data_fetcher.delete_saved_job("user1", "job123")
+        
+        self.assertTrue(result)
+        mock_bq.query.assert_called_once()
+
+    @patch("data_fetcher.bq_client")
+    def test_delete_saved_job_exception(self, mock_bq):
+        # Force the query to throw an error
+        mock_bq.query.side_effect = Exception("BigQuery connection dropped")
+        
+        result = data_fetcher.delete_saved_job("user1", "job123")
+        
+        self.assertFalse(result)
+
+    # --- Tests for add_saved_job ---
+    @patch("data_fetcher.get_next_id")
+    @patch("data_fetcher.bq_client")
+    def test_add_saved_job_success(self, mock_bq, mock_next_id):
+        # We need to mock TWO database calls: the check query, and the insert query.
+        
+        # 1. The check query returns an empty list (meaning no duplicate exists)
+        mock_check_result = MagicMock()
+        mock_check_result.result.return_value = []
+        
+        # 2. The insert query executes successfully
+        mock_insert_result = MagicMock()
+        mock_insert_result.result.return_value = None
+        
+        # Apply the two mocked responses in order
+        mock_bq.query.side_effect = [mock_check_result, mock_insert_result]
+        
+        # Mock the helper function to return the correct 'fav001' format
+        mock_next_id.return_value = "fav001"
+        
+        result = data_fetcher.add_saved_job("user1", "job123")
+        
+        self.assertTrue(result)
+        self.assertEqual(mock_bq.query.call_count, 2) # Verified it checked and inserted
+        mock_next_id.assert_called_once()
+
+    @patch("data_fetcher.bq_client")
+    def test_add_saved_job_duplicate_found(self, mock_bq):
+        # Mock the check query to return a pre-existing record
+        mock_check_result = MagicMock()
+        mock_check_result.result.return_value = [{"FavoriteId": "fav001"}]
+        
+        mock_bq.query.return_value = mock_check_result
+        
+        result = data_fetcher.add_saved_job("user1", "job123")
+        
+        # Should return False and stop before inserting
+        self.assertFalse(result)
+        self.assertEqual(mock_bq.query.call_count, 1)
+
+    # --- Tests for get_user_saved_jobs ---
+    @patch("data_fetcher.get_jobs")
+    @patch("data_fetcher.bigquery.Client")
+    def test_get_user_saved_jobs_success(self, mock_client_class, mock_get_jobs):
+        # Mock the internal client initialized inside the function
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        
+        # Mock BigQuery returning one saved JobId
+        mock_row = MagicMock()
+        mock_row.JobId = "job_555"
+        mock_client.query.return_value.result.return_value = [mock_row]
+        
+        # Mock the get_jobs() function to return our target job and a decoy job
+        mock_get_jobs.return_value = [
+            {
+                "id": "job_555",
+                "company": "Tech Innovations",
+                "title": "Robotics Engineer",
+                "date_expire": "2026-12-31"
+            },
+            {
+                "id": "job_999", # This one should get filtered out
+                "company": "Other Corp",
+                "title": "Analyst",
+                "date_expire": "2026-10-10"
+            }
+        ]
+        
+        result = data_fetcher.get_user_saved_jobs("user1")
+        
+        # Assertions
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], "job_555")
+        self.assertEqual(result[0]["company"], "Tech Innovations")
+        # Verify that 'date_expire' was successfully mapped to 'deadline'
+        self.assertEqual(result[0]["deadline"], "2026-12-31")
+
+class TestGetNextId(unittest.TestCase):
+    @patch("data_fetcher.bq_client")
+    def test_get_next_id_existing_records(self, mock_bq):
+        # Mock the MAX() query finding an existing ID like 'fav042'
+        mock_row = MagicMock()
+        mock_row.max_id = "fav042"
+        mock_bq.query.return_value.result.return_value = iter([mock_row])
+        
+        # It should strip 'fav', see 42, add 1, and pad it back to 3 digits
+        result = data_fetcher.get_next_id("fake_table", "id_col", prefix="fav", padding=3)
+        self.assertEqual(result, "fav043")
+
+    @patch("data_fetcher.bq_client")
+    def test_get_next_id_empty_table(self, mock_bq):
+        # Mock an empty table (returns None or empty)
+        mock_bq.query.return_value.result.return_value = iter([])
+        
+        result = data_fetcher.get_next_id("fake_table", "id_col", prefix="fav", padding=3)
+        self.assertEqual(result, "fav001")
 
 if __name__ == "__main__":
     unittest.main()
