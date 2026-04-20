@@ -157,6 +157,7 @@ def parse_jobs(api_data):
             "job_title": job.get("title"),
             "job_description": description,
             "job_location": (job.get("location") or {}).get("display_name"),
+            "job_link": job.get("redirect_url"),
             "experience_requirements": extract_experience(description),
             "skills": extract_skills(description),
         })
@@ -842,5 +843,3 @@ if __name__ == "__main__":
     
    
   
-
-
