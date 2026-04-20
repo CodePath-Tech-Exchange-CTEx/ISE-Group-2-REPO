@@ -658,7 +658,7 @@ def save_resume_pipeline(raw_text):
     
     # 3. Insert into resumesTable
     resume_sql = f"""
-    INSERT INTO `{PROJECT_ID}.{DATABASE_ID}.`resumesTable` 
+    INSERT INTO `{PROJECT_ID}.{DATABASE_ID}.resumesTable` 
     (resume_ID, user_ID, name, location, university)
     VALUES (@rid, @uid, @name, @loc, @univ)
     """
