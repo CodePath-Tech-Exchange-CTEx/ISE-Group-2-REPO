@@ -56,6 +56,51 @@
             const outData = Object.assign({ isStreamlitMessage: true, type: type }, data);
             window.parent.postMessage(outData, "*");
         }
+        let jobsData = [];
+        let currentActiveIndex = 0;
+        let scrollTimeout = null;
+
+        function sendComponentValue(payload) {
+            sendMessageToStreamlitClient("streamlit:setComponentValue", {
+                value: {
+                    ...payload,
+                    timestamp: Date.now()
+                }
+            });
+        }
+
+        function updateActiveCard() {
+            const carousel = document.getElementById("carousel");
+            const cards = carousel.querySelectorAll(".card");
+
+            if (!cards.length || !jobsData.length) return;
+
+            const carouselCenter = carousel.scrollLeft + carousel.clientWidth / 2;
+
+            let bestIndex = 0;
+            let bestDistance = Infinity;
+
+            cards.forEach((card, index) => {
+                const cardCenter = card.offsetLeft + card.clientWidth / 2;
+                const distance = Math.abs(carouselCenter - cardCenter);
+
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestIndex = index;
+                }
+            });
+
+            if (bestIndex !== currentActiveIndex) {
+                currentActiveIndex = bestIndex;
+                const activeJob = jobsData[bestIndex];
+
+                sendComponentValue({
+                    event: "active_changed",
+                    id: activeJob.id,
+                    index: bestIndex
+                });
+            }
+        }
 
         // 2. RENDER FUNCTION (Listens for data sent from Python)
         function onDataFromPython(event) {
@@ -63,15 +108,17 @@
             
             // Extract the 'jobs' dictionary passed from Python
             const jobs = event.data.args.jobs;
+            jobsData = jobs || [];
+
             const carousel = document.getElementById("carousel");
             let html = "";
 
             // Build the HTML using the injected data
-            jobs.forEach(job => {
+            jobs.forEach((job, index) => {
                 const skillsHtml = (job.skills || []).map(s => `<span class="chip">${s}</span>`).join("");
                 
                 html += `
-                <section class="card">
+                <section class="card" data-index="${index}">
                     <button class="bookmark-btn" id="bm-${job.id}" onclick="saveJob(this, '${job.id}')">💾</button> 
                     <div class="header">
                         <div>
@@ -92,6 +139,20 @@
             });
 
             carousel.innerHTML = html;
+
+            carousel.onscroll = () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(updateActiveCard, 120);
+            };
+
+            currentActiveIndex = 0;
+            if (jobsData.length > 0) {
+                sendComponentValue({
+                    event: "active_changed",
+                    id: jobsData[0].id,
+                    index: 0
+                });
+            }
             
             // Tell Streamlit how tall the iframe needs to be to avoid clipping
             sendMessageToStreamlitClient("streamlit:setFrameHeight", { height: 450 });
@@ -102,10 +163,10 @@
             // Make the button visually solid
             btn.classList.add('saved');
             
-            // Send the Job ID back to Python!
-            // We include a timestamp so Streamlit registers repeated clicks on different jobs
-            sendMessageToStreamlitClient("streamlit:setComponentValue", { 
-                value: { id: jobId, timestamp: Date.now() } 
+            sendComponentValue({
+                event: "save_clicked",
+                id: jobId,
+                index: currentActiveIndex
             });
         }
 

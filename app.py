@@ -110,9 +110,21 @@ if __name__ == '__main__':
 
         # Render the Apply button below the job card info
         with app_container:
-            if selected_job:
+            active_job = None
+            current_job_id = st.session_state.get("current_job_id")
+
+            if current_job_id:
+                for job in jobs_to_show:
+                    if job.get("id") == current_job_id:
+                        active_job = job
+                        break
+
+            if active_job is None and selected_job:
+                active_job = selected_job
+
+            if active_job:
                 if st.button("🚀 Apply for this Job", key="apply_btn_bottom", use_container_width=True):
-                    show_apply_window(selected_job)
+                    show_apply_window(active_job)
 
         GeminiChatbot(app_container)
 

@@ -439,264 +439,44 @@ def ProfilePage(container):
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-# def Render_Job(container, jobs):
-#     # Ensures the first job in the carousel is the active context if none is selected
-#     if jobs and 'current_job_desc' not in st.session_state:
-#         st.session_state['current_job_desc'] = jobs[0].get('description', 'No description available.')
-    
-#     html = """
-#     <style>
-#     /* Horizontal swipe container */
-#     .carousel {
-#     display : flex;    /* cards side by side */
-#     overflow-x : auto;    /* allow horizontal scroll */
-#     scroll-snap-type : x mandatory;    /* snap page by page */
-#     -webkit-overflow-scrolling: touch;    /* smooth iOS scrolling */
-#     gap: 16px;
-#     padding: 12px 2px;
-#     width: 100%;
-#     touch-action: pan-x;
-#     }
-#     /*Remove scroll bar*/
-#     .carousel::-webkit-scrollbar { display: none; }
-
-#     /* Job page*/
-#     .card {
-#     flex: 0 0 100%;    /*Manages the space of the card in the screen*/
-#     scroll-snap-align: start;    /*When snapping, allign card with screen*/
-#     border: 1px solid #e5e7eb;
-#     border-radius: 18px;
-#     padding: 22px;
-#     background: #ffffff;
-#     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-#     box-sizing: border-box;
-#     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-#     position: relative;
-#     }
-
-#         /* bookmark button styles */
-#     .bookmark-btn {
-#         position: absolute;
-#         top: 18px;
-#         right: 18px;
-#         background: none;
-#         border: none;
-#         font-size: 28px;
-#         cursor: pointer;
-#         padding: 0;
-#         line-height: 1;
-#         opacity: 0.3;
-#         transition: opacity 0.2s, transform 0.15s;
-#     }
-#     .bookmark-btn.saved {
-#         opacity: 1;
-#     }
-#     .bookmark-btn:hover {
-#         transform: scale(1.2);
-#     }
-
-
-#     .header {
-#     display: flex;
-#     align-items: center;
-#     gap: 12px;
-#     margin-bottom: 10px;
-#     }
-#     /* simple logo circle */
-#     .logo {
-#     width: 44px;
-#     height: 44px;
-#     border-radius: 12px;
-#     background: #f3f4f6;
-#     display: flex;
-#     align-items: center;
-#     justify-content: center;
-#     font-weight: 800;
-#     color: #111827;
-#     font-size: 18px;
-#     flex: 0 0 auto;
-#       }
-#     .company { 
-#     font-size: 28px; 
-#     font-weight: 700; 
-#     margin: 0; 
-#     }
-#     .title { 
-#     color: #555; 
-#     margin-top: 4px; 
-#     margin-bottom: 16px; 
-#     }
-#     .label { 
-#     font-weight: 700; 
-#     margin-top: 18px; 
-#     margin-bottom: 6px; 
-#     }
-#     .subtext {
-#     margin: 10px 0 14px 0;
-#     color: #6b7280;
-#     font-size: 16px;
-#     }
-
-#     /* badges */
-#     .badges { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 14px 0; }
-#     .badge-open {
-#     background: #d1fae5;
-#     color: #065f46;
-#     padding: 8px 12px;
-#     border-radius: 10px;
-#     font-weight: 700;
-#     font-size: 14px;
-#     display: inline-flex;
-#     align-items: center;
-#     gap: 8px;
-#     }
-#     .badge-salary {
-#     background: #fee2e2;
-#     color: #991b1b;
-#     padding: 8px 12px;
-#     border-radius: 10px;
-#     font-weight: 700;
-#     font-size: 14px;
-#     display: inline-flex;
-#     align-items: center;
-#     gap: 8px;
-#     }
-#     /* skills row */
-#     .skills-row {
-#     display: flex;
-#     flex-wrap: wrap;
-#     gap: 8px;
-#     margin: 10px 0 18px 0;
-#     }
-#     .chip { 
-#     display: inline-block; 
-#     padding: 8px 10px; 
-#     border-radius: 10px; 
-#     border: 1px solid #e5e7eb; 
-#     background: #f9fafb; 
-#     font-size: 14px;
-#     font-weight: 650;
-#     color: #111827; 
-#     }
-#     /* bottom location badge */
-#     .location {
-#     background: #dcfce7;
-#     color: #166534;
-#     display: inline-flex;
-#     align-items: center;
-#     gap: 8px;
-#     padding: 8px 12px;
-#     border-radius: 10px;
-#     font-weight: 800;
-#     font-size: 14px;
-#     margin-top: 10px;
-#     }
-
-#     .section {
-#     margin-top: 14px;
-#     color: #111827;
-#     }
-#     .section b { color: #111827; }
-#     .section p { margin: 6px 0; color: #374151; }
-#     </style>
-#     <div class="carousel">
-#     """
-
-#     # HTML Container
-#     for job in jobs:
-#         company = job.get("company", "")
-#         title = job.get("title", "")
-#         description = job.get("description", "")
-#         experience = job.get("experience", "")
-#         location = job.get("location", "")
-#         job_id = job.get("id", "") 
-#         skills_html = render_skills(job.get("skills", []))
-
-
-#         html += f"""
-#         <section class="card">
-#           <button class="bookmark-btn" id="bm-{job_id}"
-#                   onclick="toggleBookmark(this, '{job_id}')">💾</button> 
-#           <div class="header">
-#             <div>
-#               <h2 class="title">{title}</h2>
-#               <div class="company">{company}</div>
-#             </div>
-#           </div>
-
-#           <div class="badges">
-#             <div class="badge-open">✅ Open for applications</div>
-#           </div>
-
-#           <div class="skills-row">
-#             {skills_html}
-#           </div>
-
-#           <div class="section">
-#             <p><b>Job Description:</b> {description}</p>
-#             <p><b>Experience:</b> {experience}</p>
-#           </div>
-
-#           <div class="location">📍 {location}</div>
-#         </section>
-#         """
-        
-#  # closing div + JS script
-#     html += """
-#     </div>
-#     <script>
-#       function toggleBookmark(btn, jobId) {
-#         const favs = JSON.parse(sessionStorage.getItem('favs') || '{}');
-#         favs[jobId] = !favs[jobId];
-#         sessionStorage.setItem('favs', JSON.stringify(favs));
-#         btn.classList.toggle('saved', favs[jobId]);
-#       }
-#       const favs = JSON.parse(sessionStorage.getItem('favs') || '{}');
-#       Object.keys(favs).forEach(id => {
-#         if (favs[id]) {
-#           const btn = document.getElementById('bm-' + id);
-#           if (btn) btn.classList.add('saved');
-#         }
-#       });
-#     </script>
-#     """
-#     html += "</div>"
-
-#     with container:
-#         components.html(html, height=420, scrolling=True) 
-
-
 custom_job_carousel = components.declare_component(
     "job_carousel", 
     path="job_carousel"
 )
 
 def Render_Job(container, jobs):
-    # Ensure the first job in the carousel is the active context if none is selected
     if jobs and 'current_job_desc' not in st.session_state:
         st.session_state['current_job_desc'] = jobs[0].get('description', 'No description available.')
+        st.session_state['current_job_id'] = jobs[0].get('id')
 
     with container:
-        # 2. Call the custom component and pass the raw 'jobs' data to it.
-        # We capture the return value in 'clicked_data'
         clicked_data = custom_job_carousel(jobs=jobs, key="main_carousel")
-        
-        # 3. Handle the returned data when a user clicks the floppy disk
-        if clicked_data and "id" in clicked_data:
-            job_id_to_save = clicked_data["id"]
-            current_user_id = st.session_state.get('user_id', '1')
-            
-            # Save it to BigQuery
-            with st.spinner("Saving job to favorites..."):
-                success = add_saved_job(current_user_id, job_id_to_save)
-                
-                if success:
-                    st.toast("✅ Job saved to favorites!")
-                    # Force the profile page to refresh next time it opens
-                    if 'saved_jobs_loaded' in st.session_state:
-                        del st.session_state['saved_jobs_loaded']
-                else:
-                    st.error("Job aleardy saved to favorites.")
+
+        if clicked_data:
+            event = clicked_data.get("event")
+
+            if event == "active_changed":
+                job_id = clicked_data.get("id")
+
+                for job in jobs:
+                    if job.get("id") == job_id:
+                        st.session_state["current_job_id"] = job.get("id")
+                        st.session_state["current_job_desc"] = job.get("description", "")
+                        break
+
+            elif event == "save_clicked":
+                job_id_to_save = clicked_data["id"]
+                current_user_id = st.session_state.get('user_id', '1')
+
+                with st.spinner("Saving job to favorites..."):
+                    success = add_saved_job(current_user_id, job_id_to_save)
+
+                    if success:
+                        st.toast("✅ Job saved to favorites!")
+                        if 'saved_jobs_loaded' in st.session_state:
+                            del st.session_state['saved_jobs_loaded']
+                    else:
+                        st.error("Job already saved to favorites.")
         
 def render_skills(skills): 
     chips = "" 
@@ -714,10 +494,10 @@ def render_apply_window_contents(job):
         use_container_width=True
     )
 
+
 @st.dialog("Apply to this job")
 def show_apply_window(job):
-    render_apply_window_contents(job)
-    
+    render_apply_window_contents(job)   
 
 def ResumeUploader(container):
     """
