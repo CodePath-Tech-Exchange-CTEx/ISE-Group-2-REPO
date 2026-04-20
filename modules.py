@@ -61,7 +61,7 @@ def NavBar():
     /*Button styling*/
     .st-key-nav_container .st-key-nav_home_btn button,
     .st-key-nav_container .st-key-nav_profile_btn button,
-    .st-key-nav_container .st-key-nav_settings_btn button 
+    .st-key-nav_container .st-key-nav_settings_btn button,
     .st-key-nav_container .st-key-nav_tracker_btn button {
         background: inherit !important;
         font-size: 24px !important;
@@ -113,15 +113,15 @@ def NavBar():
         #     st.button("⚙️", key="nav_settings_btn")
 
         with col2:
-            if st.button("🏠", key="nav_home_btn"):
+            if st.button("🏠", key="nav_home_btn", help = "Home"):
                 st.session_state.page = "home"
                 st.rerun()
         with col3: 
-            if st.button("👤", key="nav_profile_btn"):
+            if st.button("👤", key="nav_profile_btn", help = "Profile"):
                 st.session_state.page = "profile"
                 st.rerun()
         with col4: 
-            if st.button("📋", key="nav_tracker_btn"): # Using a chart icon for the tracker
+            if st.button("📋", key="nav_tracker_btn", help = "Application Traker"): # Using a chart icon for the tracker
                 st.session_state.page = "tracker"
                 st.rerun()
 
@@ -630,7 +630,7 @@ def KeywordMatcher(container):
                 time.sleep(1.5) 
                 
                 score, match_found = get_match_score(resume_id, job_id)
-                # score = 78
+                
                 st.markdown(f"""
                     <div class="match-card">
                         <h2 style='margin:0; color:#000000;'>{score}%</h2>
