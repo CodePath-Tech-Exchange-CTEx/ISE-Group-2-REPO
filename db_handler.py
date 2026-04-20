@@ -53,6 +53,7 @@ def insert_jobs_to_bigquery(jobs):
             "title": job["job_title"],
             "description": job["job_description"],
             "location": job["job_location"],
+            "job_link": job["job_link"],
         })
 
         for skill in job.get("skills", []):
@@ -127,6 +128,7 @@ def get_jobs_from_bigquery():
         j.description, 
         j.location,
         j.job_link
+        ORDER BY j.job_ID DESC
         LIMIT 20
         """
     
