@@ -484,7 +484,6 @@ def render_skills(skills):
         chips += f'<span class="chip">{skill}</span>' 
     return chips
 
-@st.dialog("Apply to this job")
 def render_apply_window_contents(job):
     st.markdown(f"### {job['title']}")
     st.write(f"Apply for **{job['company']}** via the official link below:")
@@ -493,7 +492,12 @@ def render_apply_window_contents(job):
         job["link"],
         type="primary",
         use_container_width=True
-    )    
+    )
+
+
+@st.dialog("Apply to this job")
+def show_apply_window(job):
+    render_apply_window_contents(job)   
 
 def ResumeUploader(container):
     """

@@ -8,7 +8,7 @@
 import streamlit as st
 
 
-from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs, render_apply_window_contents, application_tracker
+from modules import GeminiChatbot, NavBar, CompanySearch, Render_Job, ProfilePage, ResumeUploader, KeywordMatcher, SavedJobs, show_apply_window, application_tracker
 from data_fetcher import get_jobs
 
 #init_db() #initialize database on startup
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
             if active_job:
                 if st.button("🚀 Apply for this Job", key="apply_btn_bottom", use_container_width=True):
-                    render_apply_window_contents(active_job)
+                    show_apply_window(active_job)
 
         GeminiChatbot(app_container)
 
