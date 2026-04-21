@@ -83,15 +83,22 @@ if __name__ == '__main__':
             # Default view (limiting to 20 for speed at scale)
             jobs_to_show = jobs[:20] 
 
+        Render_Job(app_container, jobs_to_show)
+
         # dropdown allows users to specify which job description Gemini should reference.
         # Placing it here ensures users see the 'Selection' before they see the 'Visuals'.
         selected_job = None
         with app_container:
             if jobs_to_show:
                 job_titles = [f"{j.get('title')} at {j.get('company')}" for j in jobs_to_show]
-                
+
+                st.markdown(
+                    f"<p style='color: black; font-weight: 600; margin-bottom: 5px;'>🎯 Select a job to see your match score, chat with Gemini, or apply</p>", 
+                    unsafe_allow_html=True
+                )
+
                 selected_job_name = st.selectbox(
-                    f"🎯 Found {len(jobs_to_show)} jobs. Select one to analyze with Gemini:", 
+                    "hidden text", 
                     options=job_titles,
                     key="ai_job_selector"
                 )
@@ -104,9 +111,9 @@ if __name__ == '__main__':
                         selected_job = j
                         break
             else:
-                st.warning("No jobs found matching your search.")
+                st.error("No jobs found matching your search.")
 
-        Render_Job(app_container, jobs_to_show)
+        
 
         # Render the Apply button below the job card info
         with app_container:
@@ -123,17 +130,32 @@ if __name__ == '__main__':
                 active_job = selected_job
 
             if active_job:
+                st.markdown(
+                "<p style='color: black; font-weight: 700; font-size: 22px; margin-top: 30px; margin-bottom: 10px;'>Apply Now</p>", 
+                unsafe_allow_html=True
+            )
                 if st.button("🚀 Apply for this Job", key="apply_btn_bottom", use_container_width=True):
                     show_apply_window(active_job)
 
-        GeminiChatbot(app_container)
+        with app_container:
+            st.markdown(
+                "<p style='color: black; font-weight: 700; font-size: 22px; margin-top: 30px; margin-bottom: 10px;'>Job Analysis & Prep</p>", 
+                unsafe_allow_html=True
+            )
+            GeminiChatbot(app_container)
 
-        st.divider()
-        col_left, col_right = app_container.columns(2)
-        with col_left:
-            ResumeUploader(st.container())
-        with col_right:
-            KeywordMatcher(st.container())
+            st.divider()
+
+        with app_container:
+            st.markdown(
+                "<p style='color: black; font-weight: 700; font-size: 22px; margin-bottom: 10px;'>Score Your Resume</p>", 
+                unsafe_allow_html=True
+            )
+            col_left, col_right = app_container.columns(2)
+            with col_left:
+                ResumeUploader(st.container())
+            with col_right:
+                KeywordMatcher(st.container())
 
     elif st.session_state.page == "tracker":
         application_tracker(app_container)
