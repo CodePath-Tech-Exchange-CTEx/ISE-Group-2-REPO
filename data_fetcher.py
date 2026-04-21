@@ -648,7 +648,7 @@ def sync_skill_to_db(skill_name):
     bq_client.query(insert_query, job_config=bigquery.QueryJobConfig(query_parameters=insert_params)).result()
     return new_id
 
-def save_resume_pipeline(raw_text):
+def save_resume_pipeline(raw_text, user_id):
     # Parse
     extracted = ai_extract_resume_data(raw_text)
     
@@ -664,7 +664,7 @@ def save_resume_pipeline(raw_text):
     """
     res_params = [
         bigquery.ScalarQueryParameter("rid", "STRING", new_res_id),
-        bigquery.ScalarQueryParameter("uid", "STRING", new_user_id),
+        bigquery.ScalarQueryParameter("uid", "STRING", user_id),
         bigquery.ScalarQueryParameter("name", "STRING", extracted['name']),
         bigquery.ScalarQueryParameter("loc", "STRING", extracted['location']),
         bigquery.ScalarQueryParameter("univ", "STRING", extracted['university']),
