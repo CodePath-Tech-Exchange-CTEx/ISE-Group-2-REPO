@@ -427,15 +427,42 @@ def ProfilePage(container):
                         extracted_text = extract_text_from_pdf(uploaded_file)
                         
                         if extracted_text:
-                            st.session_state.user_resume = extracted_text
-                            st.success("✅ Resume text extracted and saved!")
+                            # 1. Get current user ID
+                            current_user_id = st.session_state.get('user_id', '1')
+                            
+                            # 2. Call the save pipeline to insert into BigQuery
+                            new_id = save_resume_pipeline(extracted_text, current_user_id)
+                            
+                            if new_id:
+                                # 3. Save to session state
+                                st.session_state.current_resume_id = new_id
+                                st.session_state.user_resume = extracted_text
+                                st.success(f"✅ Resume successfully uploaded and saved! (ID: {new_id})")
+                            else:
+                                st.error("❌ Failed to save resume to the database.")
                         else:
                             st.error("Could not extract text. Try a different PDF or use Text Upload.")
             else:
                 resume_text = st.text_area("Paste resume text here...", height=200, key="resume_text_area", label_visibility="collapsed")
-                if resume_text:
-                    st.session_state.user_resume = resume_text
-                    st.info("Resume saved to session.")
+                #Add a save button for text mode so it doesn't try to save on every keystroke
+                if st.button("Save Text to Profile", use_container_width=True, key="save_text_btn"):
+                    if resume_text:
+                        with st.spinner("Analyzing and saving text to database..."):
+                            # 1. Get current user ID
+                            current_user_id = st.session_state.get('user_id', '1')
+                            
+                            # 2. Call the save pipeline to insert into BigQuery
+                            new_id = save_resume_pipeline(resume_text, current_user_id)
+                            
+                            if new_id:
+                                # 3. Save to session state
+                                st.session_state.current_resume_id = new_id
+                                st.session_state.user_resume = resume_text
+                                st.success(f"✅ Resume text successfully saved! (ID: {new_id})")
+                            else:
+                                st.error("❌ Failed to save resume text to the database.")
+                    else:
+                        st.warning("Please paste your resume text before saving.")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -568,7 +595,9 @@ def ResumeUploader(container):
             if 'current_resume_id' not in st.session_state:
                 with st.spinner("Processing & Saving to Database..."):
                     # Call your new pipeline function
-                    new_id = save_resume_pipeline(extracted_text) 
+                    current_user_id = st.session_state.get('user_id', '1')
+
+                    new_id = save_resume_pipeline(extracted_text, current_user_id) 
                     
                     # 3. STORE THE NEW ID IN SESSION STATE
                     st.session_state['current_resume_id'] = new_id

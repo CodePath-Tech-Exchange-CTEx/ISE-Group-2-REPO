@@ -206,7 +206,8 @@ class TestBigQueryInsert(unittest.TestCase):
                 "job_description": "Python and Git required.",
                 "job_location": "Remote",
                 "experience_requirements": "0-2 years of experience",
-                "skills": ["python", "git"]
+                "skills": ["python", "git"],
+                "job_link": "https://google.com/careers"
             }
         ]
 
@@ -227,6 +228,7 @@ class TestBigQueryInsert(unittest.TestCase):
                 "title": "Software Engineer Intern",
                 "description": "Python and Git required.",
                 "location": "Remote",
+                "job_link": "https://google.com/careers"
             }]
         )
 
@@ -513,7 +515,7 @@ class TestDataFilter(unittest.TestCase):
         mock_bq.query.return_value.result.return_value = []
 
         # EXECUTE
-        result_id = data_fetcher.save_resume_pipeline("Dummy PDF Text")
+        result_id = data_fetcher.save_resume_pipeline("Dummy PDF Text", "user123")
 
         # ASSERTIONS
         # Check if it returned the correct resume ID

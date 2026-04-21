@@ -102,66 +102,81 @@ class DummyContainer:
     def __enter__(self): return self
     def __exit__(self, exc_type, exc, tb): return False
 
-
+@unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestJobRender(unittest.TestCase):
         def test_render_skills(self):
                 html = modules.render_skills(["Python"])
                 self.assertIn("Python", html)
                 self.assertIn('class="chip"', html)
 
-        #This replaces the Streamlit rendering call with a mock function during this test.
-        @patch("modules.components.html") 
-        def test_render_job_outputs_html(self, mock_html):
-                jobs = [{
-                        "id": "google-1",
-                        "company": "Google",
-                        "title": "Software Engineer Intern Summer 2026",
-                        "description": "Work on scalable systems.",
-                        "skills": ["Python", "Git"],
-                        "experience": "Projects accepted",
-                        "location": "Florida",
-                        }]
-                #Calls a mock_html
-                modules.Render_Job(DummyContainer(), jobs)
+        @patch("modules.st.session_state", new_callable=dict)
+        @patch("modules.st.toast")
+        @patch("modules.st.error")
+        @patch("modules.st.spinner")
+        @patch("modules.add_saved_job")
+        @patch("modules.custom_job_carousel")
+        def test_render_job_save_success(self, mock_carousel, mock_add_job, mock_spinner, mock_error, mock_toast, mock_state):
+            """Test the successful flow: clicking save, writing to DB, and clearing cache."""
+            # 1. Setup Initial State
+            mock_state['user_id'] = 'user123'
+            mock_state['saved_jobs_loaded'] = True
+            
+            jobs = [{"id": "job_001", "description": "A great new role!"}]
+            
+            # 2. Simulate the JS component returning the clicked ID
+            mock_carousel.return_value = {"id": "job_001", "event": "save_clicked"}
+            
+            # 3. Simulate BigQuery successfully saving the job
+            mock_add_job.return_value = True
 
-                mock_html.assert_called_once()
-                
-                # Grab the HTML passed to components.html
-                html = mock_html.call_args[0][0]
-
-                # Basic checks
-                self.assertIn("Google", html)
-                self.assertIn("Software Engineer Intern Summer 2026", html)
-                self.assertIn("Work on scalable systems.", html)
-                self.assertIn("Python", html)
-                self.assertIn("Git", html)
-                self.assertIn("Florida", html)
-########## code change ##########
-
-
-        @patch("modules.components.html")
-        def test_favorite_button_in_html(self, mock_html):
-            """Test that the bookmark button is rendered in each job card."""
-            jobs = [{
-            "id": "google-1",
-            "company": "Google",
-            "title": "Software Engineer Intern Summer 2026",
-            "description": "Work on scalable systems.",
-            "skills": ["Python", "Git"],
-            "experience": "Projects accepted",
-            "location": "Florida",
-            }]
+            # 4. Execute the function
             modules.Render_Job(DummyContainer(), jobs)
 
-            html = mock_html.call_args[0][0]
+            # 5. Assertions
+            # Check if the active context description was set
+            self.assertEqual(mock_state['current_job_desc'], "A great new role!")
+            
+            # Verify the database function was called with the correct IDs
+            mock_add_job.assert_called_once_with('user123', 'job_001')
+            
+            # Verify the success toast was shown
+            mock_toast.assert_called_once_with("✅ Job saved to favorites!")
+            
+            # Verify the cache was cleared so the profile page updates
+            self.assertNotIn('saved_jobs_loaded', mock_state)
+            
+            # Ensure no error was thrown
+            mock_error.assert_not_called()
 
-            # Check bookmark button and JS are present
-            self.assertIn("bookmark-btn", html)
-            self.assertIn("💾", html)
-            self.assertIn("toggleBookmark", html)
-            self.assertIn("bm-google-1", html)       
+        @patch("modules.st.session_state", new_callable=dict)
+        @patch("modules.st.toast")
+        @patch("modules.st.error")
+        @patch("modules.st.spinner")
+        @patch("modules.add_saved_job")
+        @patch("modules.custom_job_carousel")
+        def test_render_job_duplicate_found(self, mock_carousel, mock_add_job, mock_spinner, mock_error, mock_toast, mock_state):
+            """Test that the UI handles a duplicate entry safely."""
+            jobs = [{"id": "job_002", "description": "Another great role!"}]
+            
+            #Added the "event" key so the code enters the save logic branch!
+            mock_carousel.return_value = {"id": "job_002", "event": "save_clicked"}
+            
+            # Simulate BigQuery rejecting it as a duplicate (returning False)
+            mock_add_job.return_value = False 
 
+            # Ensure user_id is present
+            mock_state['user_id'] = 'test_user'
 
+            modules.Render_Job(DummyContainer(), jobs)
+
+            # Verify the error message was shown
+            self.assertTrue(mock_error.called, "st.error was never called! Check if the 'event' key matches.")
+            
+            actual_message = mock_error.call_args[0][0]
+            self.assertEqual(actual_message, "Job already saved to favorites.")
+            
+            # Verify the success toast was NOT shown
+            mock_toast.assert_not_called()
 
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestNavigation(unittest.TestCase):
@@ -186,7 +201,6 @@ class TestNavigation(unittest.TestCase):
         
         # Check if session state updated
         self.assertEqual(self.at.session_state.page, "profile")
-
 
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestProfilePage(unittest.TestCase):
@@ -215,13 +229,13 @@ class TestProfilePage(unittest.TestCase):
         # 3. Assertions
         self.assertEqual(self.at.title[0].value, "User Profile")
         self.assertEqual(self.at.subheader[0].value, "Jane Doe")
-        # The user icon markdown is at index 1, email is at index 2
-        self.assertIn("jane.doe<span>@</span>example.com", self.at.markdown[2].value)
-
-        # Collect all `st.write` contents to check for presence
-        write_outputs = "".join([w.value for w in self.at.write])
-        self.assertIn("**Date created:** 2024-01-15", write_outputs)
-        self.assertIn("**Verified:** ✅", write_outputs)
+        
+       # Combine ALL markdown on the page so we don't have to guess the array index!
+        md_text = "".join([m.value for m in self.at.markdown])
+        
+        self.assertIn("jane.doe<span>@</span>example.com", md_text)
+        self.assertIn("**Date created:** 2024-01-15", md_text)
+        self.assertIn("**Verified:** ✅", md_text)
 
     @patch("modules.get_user_profile")
     def test_profile_displays_unverified_user(self, mock_get_user_profile):
@@ -239,15 +253,20 @@ class TestProfilePage(unittest.TestCase):
         # 2. Run the app test
         self.at.run()
 
-        # 3. Assertions
-        write_outputs = "".join([w.value for w in self.at.write])
-        self.assertIn("**Verified:** ❌", write_outputs)
+       # Combine ALL markdown on the page instead of looking for 'write'
+        md_text = "".join([m.value for m in self.at.markdown])
+        self.assertIn("**Verified:** ❌", md_text)
 
+    @patch("modules.save_resume_pipeline")
+    @patch("modules.get_user_resume")
     @patch("modules.get_user_profile")
-    def test_resume_text_persistence(self, mock_get_user_profile):
+    def test_resume_text_persistence(self, mock_get_user_profile, mock_get_user_resume, mock_save_pipeline):
         """Test if typing in the text area saves to session state."""
         # Mock the profile data call to prevent errors during this unrelated test
         mock_get_user_profile.return_value = {"first_name": "Test", "last_name": "User", "email": "a@b.c", "date_created": "d", "is_verified": True}
+        
+        # Mock the database pipeline to return a fake ID when the save button is clicked
+        mock_save_pipeline.return_value = "NEW_ID_123"
         self.at.run()
         # Switch to text mode first
         self.at.button(key="btn_text").click().run()
@@ -255,6 +274,10 @@ class TestProfilePage(unittest.TestCase):
         # Find text area and input dummy resume
         text_area = self.at.text_area(key="resume_text_area")
         text_area.set_value("Experience with Python and Streamlit").run()
+
+        # Find save button and click
+        save_btn = self.at.button(key="save_text_btn")
+        save_btn.click().run()
         
         # Verify it saved to session state
         self.assertEqual(self.at.session_state.user_resume, "Experience with Python and Streamlit")
@@ -290,9 +313,9 @@ class TestProfilePage(unittest.TestCase):
                 resume_selectbox = sb
                 break
         
-        self.assertIsNotNone(resume_selectbox, "Resume selectbox with label 'All submitted resumes' not found.")
-        self.assertEqual(resume_selectbox.options, list(mock_resumes.keys()))
-
+        # Extract the readable filenames to match Streamlit's formatted output
+        expected_filenames = [mock_resumes[k]["FILENAME"] for k in mock_resumes.keys()]
+        self.assertEqual(list(resume_selectbox.options), expected_filenames)
 
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestResumeAndMatcherLogic(unittest.TestCase):
@@ -343,22 +366,22 @@ class TestResumeAndMatcherLogic(unittest.TestCase):
     @patch("modules.get_match_score")
     def test_analyze_output(self, mock_get_match_score):
         
-        # 2. Force the mock to return a specific score and list of matches
+        # Force the mock to return a specific score and list of matches
         mock_get_match_score.return_value = (85, ["Python", "Streamlit"])
 
-        # 3. Use the CORRECT session state keys required by KeywordMatcher
+        # Use the CORRECT session state keys required by KeywordMatcher
         self.at.session_state['current_resume_id'] = "res123"
-        self.at.session_state['current_job_id'] = "J001"
+        self.at.session_state['current_job_id'] = "J005"
         self.at.run()
 
-        # 4. Target the button and click it
+        # Target the button and click it
         analyze_btn = self.at.button(key="analyze_match_btn")
         analyze_btn.click().run()
 
-        # 5. Verify the backend function was called with our fake IDs
-        mock_get_match_score.assert_called_with("res123", "J001")
+        # Verify the backend function was called with our fake IDs
+        mock_get_match_score.assert_called_with("res123", "J005")
 
-        # 6. Verify the UI updated to show the matches
+        # Verify the UI updated to show the matches
         matches_info = any("Matches found:" in i.value for i in self.at.info)
         self.assertTrue(matches_info)
     
@@ -375,7 +398,6 @@ class TestResumeAndMatcherLogic(unittest.TestCase):
         self.assertTrue(analyze_btn.disabled)
         self.assertTrue(any("Please upload a resume" in cap.value for cap in self.at.caption))
         
-
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestNavBar(unittest.TestCase):
     def setUp(self):
@@ -492,9 +514,10 @@ class TestApplicationTracker(unittest.TestCase):
         """Test if clicking the trash icon removes the job."""
         # 1. Inject two jobs
         self.at.session_state.job_tracker = [
-            {"id": 0, "title": "Job A", "date": "2026-01-01", "status": "Applied"},
-            {"id": 1, "title": "Job B", "date": "2026-01-01", "status": "Applied"}
+            {"application_id": 0, "title": "Job A", "date": "2026-01-01", "status": "Applied"},
+            {"application_id": 1, "title": "Job B", "date": "2026-01-01", "status": "Applied"}
         ]
+
         self.at.run()
 
         # 2. Click delete on the first one
@@ -503,7 +526,6 @@ class TestApplicationTracker(unittest.TestCase):
         # 3. Assert only one job remains
         self.assertEqual(len(self.at.session_state.job_tracker), 1)
         self.assertEqual(self.at.session_state.job_tracker[0]['title'], "Job B")
-
 
 @unittest.skip("Blocked by Streamlit AppTest limitation in CI")
 class TestSavedJobs(unittest.TestCase):
@@ -514,16 +536,44 @@ class TestSavedJobs(unittest.TestCase):
         # Navigate to the profile page (or wherever SavedJobs is rendered)
         self.at.session_state.page = "profile"
         self.at.run()
-
-    def test_saved_jobs_render(self):
-        """Test if the mock jobs render correctly on the screen."""
-        # Grab all the markdown text on the page
-        md_text = "".join([m.value for m in self.at.markdown])
         
-        # Verify the companies are displayed
+    @patch("modules.get_user_saved_jobs") 
+    def test_saved_jobs_render(self, mock_fetch):
+        """Test if the mock jobs render correctly on the screen."""
+        
+        # 1. Setup mock data using the EXACT lowercase keys from your UI code
+        mock_data = [
+            {
+                "id": "1", 
+                "company": "Tech Solutions", 
+                "position": "Developer", 
+                "deadline": "2026-05-01"
+            },
+            {
+                "id": "2", 
+                "company": "Cloud Native Solutions", 
+                "position": "Engineer", 
+                "deadline": "2026-06-01"
+            }
+        ]
+        mock_fetch.return_value = mock_data
+
+        # 2. THE CRITICAL STEP: Clear the 'loaded' flag and the data
+        # This forces the app to actually call your mocked function
+        if 'saved_jobs_loaded' in self.at.session_state:
+            del self.at.session_state['saved_jobs_loaded']
+        self.at.session_state['saved_jobs'] = []
+        
+        # 3. Run the app (it will now see the flag is missing and call mock_fetch)
+        self.at.run(timeout=20)
+
+        # 4. Verify the content
+        # We join all markdown to make searching easier
+        md_text = " ".join([m.value for m in self.at.markdown])
+        
         self.assertIn("Tech Solutions", md_text)
         self.assertIn("Cloud Native Solutions", md_text)
-        self.assertIn("Data Insights Corp.", md_text)
+        self.assertIn("Developer", md_text)
 
     def test_saved_jobs_empty_state(self):
         """Test if the empty state message appears when there are no jobs."""
@@ -599,77 +649,7 @@ class TestSavedJobs(unittest.TestCase):
         # 4. Verify the job was NOT removed from the session state list
         self.assertEqual(len(self.at.session_state.saved_jobs), 3)
 
-@unittest.skip("Blocked by Streamlit AppTest limitation in CI")
-class TestJobRender(unittest.TestCase):
+
     
-    def test_render_skills(self):
-        """Keep the original skills test since it is still a separate helper function."""
-        html = modules.render_skills(["Python"])
-        self.assertIn("Python", html)
-        self.assertIn('class="chip"', html)
-
-    @patch("modules.st.session_state", new_callable=dict)
-    @patch("modules.st.toast")
-    @patch("modules.st.error")
-    @patch("modules.st.spinner")
-    @patch("modules.add_saved_job")
-    @patch("modules.custom_job_carousel")
-    def test_render_job_save_success(self, mock_carousel, mock_add_job, mock_spinner, mock_error, mock_toast, mock_state):
-        """Test the successful flow: clicking save, writing to DB, and clearing cache."""
-        # 1. Setup Initial State
-        mock_state['user_id'] = 'user123'
-        mock_state['saved_jobs_loaded'] = True
-        
-        jobs = [{"id": "job_001", "description": "A great new role!"}]
-        
-        # 2. Simulate the JS component returning the clicked ID
-        mock_carousel.return_value = {"id": "job_001"}
-        
-        # 3. Simulate BigQuery successfully saving the job
-        mock_add_job.return_value = True
-
-        # 4. Execute the function
-        modules.Render_Job(DummyContainer(), jobs)
-
-        # 5. Assertions
-        # Check if the active context description was set
-        self.assertEqual(mock_state['current_job_desc'], "A great new role!")
-        
-        # Verify the database function was called with the correct IDs
-        mock_add_job.assert_called_once_with('user123', 'job_001')
-        
-        # Verify the success toast was shown
-        mock_toast.assert_called_once_with("✅ Job saved to favorites!")
-        
-        # Verify the cache was cleared so the profile page updates
-        self.assertNotIn('saved_jobs_loaded', mock_state)
-        
-        # Ensure no error was thrown
-        mock_error.assert_not_called()
-
-    @patch("modules.st.session_state", new_callable=dict)
-    @patch("modules.st.toast")
-    @patch("modules.st.error")
-    @patch("modules.st.spinner")
-    @patch("modules.add_saved_job")
-    @patch("modules.custom_job_carousel")
-    def test_render_job_duplicate_found(self, mock_carousel, mock_add_job, mock_spinner, mock_error, mock_toast, mock_state):
-        """Test that the UI handles a duplicate entry safely."""
-        jobs = [{"id": "job_002", "description": "Another great role!"}]
-        
-        # Simulate the JS component returning the clicked ID
-        mock_carousel.return_value = {"id": "job_002"}
-        
-        # Simulate BigQuery rejecting it as a duplicate (returning False)
-        mock_add_job.return_value = False 
-
-        modules.Render_Job(DummyContainer(), jobs)
-
-        # Verify the error message was shown (matches your exact spelling in the code)
-        mock_error.assert_called_once_with("Job aleardy saved to favorites.")
-        
-        # Verify the success toast was NOT shown
-        mock_toast.assert_not_called()
-
 if __name__ == "__main__":
     unittest.main()
