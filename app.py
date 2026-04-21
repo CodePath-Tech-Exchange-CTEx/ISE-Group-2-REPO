@@ -56,7 +56,7 @@ def main_container():
     with container:
     
         st.markdown(
-            "<h3 style='text-align: right;'>InternMatch 🟰</h3>", 
+            "<h3 style='text-align: right;'>InternMatch</h3>", 
             unsafe_allow_html=True
         )
         
