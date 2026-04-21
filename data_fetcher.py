@@ -676,10 +676,10 @@ def save_resume_pipeline(raw_text):
         skill_id = sync_skill_to_db(s_name)
         
         # Create unique link ID (RSK...)
-        rsk_id = get_next_id("oluwanifemi-elias-hu.ISE.resumeSkill", "resume_Skill_ID", prefix="RSK", padding=3)
+        rsk_id = get_next_id(f"{PROJECT_ID}.{DATABASE_ID}.resumeSkill", "resume_Skill_ID", prefix="RSK", padding=3)
         
-        link_sql = """
-        INSERT INTO `oluwanifemi-elias-hu`.`ISE`.`resumeSkill` 
+        link_sql = f"""
+        INSERT INTO `{PROJECT_ID}.{DATABASE_ID}.resumeSkill` 
         (resume_Skill_ID, resume_ID, skill_ID)
         VALUES (@rskid, @rid, @sid)
         """
@@ -699,7 +699,7 @@ def delete_saved_job(user_id, job_id):
     """
     try:
        # Your specific table reference
-        table_ref = "oluwanifemi-elias-hu.ISE.Favorites"
+        table_ref = f"{PROJECT_ID}.{DATABASE_ID}.Favorites"
 
         # The parameter-safe DELETE query
         query = f"""
