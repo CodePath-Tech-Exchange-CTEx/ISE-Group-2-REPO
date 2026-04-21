@@ -640,7 +640,7 @@ def KeywordMatcher(container):
                 if match_found:
                     st.info(f"**Matches found:** {', '.join(match_found)}")
                 else:
-                    st.warning("No matching skills found between your resume and this job.")
+                    st.error("No matching skills found between your resume and this job.")
 
         # 3. Show the warning caption only if disabled
         if is_disabled:
